@@ -1,0 +1,31 @@
+# Maven / Gradle
+target/
+build/
+*.class
+*.jar
+*.war
+*.ear
+.gradle/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.suo
+*.user
+
+# Spring Boot
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+*.env.local
+
+# Test reports
+test-results/
+cucumber-reports/
