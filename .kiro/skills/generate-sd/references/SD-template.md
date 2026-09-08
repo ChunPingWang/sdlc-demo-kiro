@@ -95,15 +95,20 @@
 
 > 請以實際架構圖（如 draw.io、Miro、PlantUML）取代上方 ASCII 示意圖，並嵌入或附件於本文件。
 
-### 3.3 關鍵架構決策
+### 3.3 關鍵架構決策（ADR 索引）
 
-| ADR 編號 | 決策摘要 | 選擇 | 主要理由 |
-|---------|---------|------|---------|
-| ADR-001 | 前端框架選型 | {React / Vue / Angular} | {理由} |
-| ADR-002 | 後端語言與框架 | {Node.js/NestJS / Java/Spring Boot / ...} | {理由} |
-| ADR-003 | 資料庫選型 | {PostgreSQL / MySQL / MongoDB / ...} | {理由} |
-| ADR-004 | 訊息佇列 | {Kafka / RabbitMQ / N/A} | {理由} |
-| {ADR-N} | {DECISION} | {CHOICE} | {REASON} |
+> 本節僅為**索引**。每一筆架構決策的完整背景、替代方案與影響，記錄於獨立的 ADR 檔
+> （`sdlc/adr/output/ADR-NNNN-*.md`），使用 `sdlc/adr/templates/ADR-template.md` 格式。
+> ADR 由 `generate-sd` 依 FSD 起草為 `Proposed`，架構師於 **HITL-1** 提供決策輸入並審核，
+> 核准後轉為 `Accepted`。**ADR 是輸出 artifact，不是人工手寫的輸入。**
+
+| ADR | 決策摘要 | 選擇 | 狀態 | 詳情 |
+|-----|---------|------|------|------|
+| [ADR-0001](../../adr/output/ADR-0001-{slug}.md) | {DECISION} | {CHOICE} | {Proposed/Accepted} | {一句摘要} |
+| [ADR-0002](../../adr/output/ADR-0002-{slug}.md) | {DECISION} | {CHOICE} | {Proposed/Accepted} | {一句摘要} |
+| {ADR-NNNN} | {DECISION} | {CHOICE} | {STATUS} | {一句摘要} |
+
+> 完整決策日誌見 [`sdlc/adr/README.md`](../../adr/README.md)。
 
 ---
 

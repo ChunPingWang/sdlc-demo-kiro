@@ -8,10 +8,11 @@
 
 ```
 sdlc-demo-kiro/
-├── sdlc/                        # SDLC 文件（需求 → FSD → SD → Task List → 測試報告）
+├── sdlc/                        # SDLC 文件（需求 → FSD → SD → ADR → Task List → 測試報告）
 │   ├── inputs/                  # 原始需求
 │   ├── fsd/                     # 功能規格文件 + Gherkin
 │   ├── sd/                      # 系統設計文件 + Task List
+│   ├── adr/                     # 架構決策紀錄（輸出；HITL-1 審核）
 │   └── test/                    # 測試報告模板與輸出
 │
 ├── src/                         # Spring Boot 實作（由 /springboot-codegen 產出）
@@ -82,7 +83,8 @@ sdlc-demo-kiro/
         │  ⏸ HITL：確認 Gherkin 情境
         ▼  /generate-sd
       SD 文件（C4 L3 + API + 資料表）
-        │  ⏸ HITL-1：確認 SD 設計
+      ADR 草稿（Proposed，sdlc/adr/output/）
+        │  ⏸ HITL-1（雙向）：架構師輸入決策 + 審核核准 ADR（→ Accepted）
       Task List（TASK-LIST-*.md）
         │  ⏸ HITL-2：架構師確認任務清單
         ▼  /springboot-codegen         依 Task List 順序驅動
@@ -111,6 +113,8 @@ sdlc-demo-kiro/
 | FSD | 功能規格文件 | `sdlc/fsd/output/FSD-LIFE-v1.0.md` |
 | FSD | Gherkin 測試案例 | `sdlc/fsd/output/features/premium-calculation.feature` |
 | SD | 系統設計文件 | `sdlc/sd/output/SD-LIFE-v1.0.md` |
+| ADR | 架構決策紀錄（6 筆）| `sdlc/adr/output/ADR-0001~0006-*.md` |
+| ADR | 決策日誌索引 | `sdlc/adr/README.md` |
 | SD | 開發 Task List | `sdlc/sd/output/TASK-LIST-LIFE-v1.0.md` |
 | 測試 | 測試報告模板 | `sdlc/test/templates/TEST-REPORT-template.md` |
 | 標準 | Java 開發標準（Steering）| `.kiro/steering/java-coding-standards.md` |
@@ -284,7 +288,8 @@ Session 啟動
 │       ▼  ② /generate-fsd                                            │
 │  FSD + C4 L1/L2 + Gherkin          ⏸ HITL：FSD 主體 / Gherkin       │
 │       ▼  ③ /generate-sd                                             │
-│  SD + C4 L3 + API + 資料表          ⏸ HITL-1：SD 設計               │
+│  SD + C4 L3 + API + 資料表                                          │
+│  ADR 草稿（Proposed）              ⏸ HITL-1（雙向）：輸入+審核 ADR    │
 │  Task List（TASK-LIST-*.md）        ⏸ HITL-2：架構師確認任務         │
 │       ▼  ④ /springboot-codegen     依 Task List 順序驅動            │
 │  測試（🔴 Red）                     ⏸ HITL：測試案例                 │
@@ -356,8 +361,8 @@ Session 啟動
 ### ③ `generate-sd` — 系統設計文件產出
 
 **觸發：** `/generate-sd`  
-**輸入：** FSD 文件 + 技術架構決策 (ADR)  
-**輸出：** `sdlc/sd/output/SD-{CODE}-v{N}.md` + `TASK-LIST-{CODE}-v{N}.md`
+**輸入：** FSD 文件（+ 先前已 `Accepted` 的 ADR，若有）  
+**輸出：** `sdlc/sd/output/SD-{CODE}-v{N}.md` + `ADR-NNNN-*.md` + `TASK-LIST-{CODE}-v{N}.md`
 
 以 FSD 為輸入，產出完整系統設計文件，著重技術實作細節：
 
@@ -373,8 +378,13 @@ Session 啟動
 
 | Phase | 產出 | HITL |
 |-------|------|------|
-| Phase 1 | SD 文件本體（C4 L3 + API + 資料表）| ⏸ HITL-1：架構師審查設計 |
+| Phase 1 | SD 文件本體 + **ADR 草稿（Proposed）** | ⏸ HITL-1（雙向）：架構師**輸入決策** + **審核核准** ADR |
 | Phase 2 | 開發 Task List（列出所有待產出類別、方法、決策）| ⏸ HITL-2：確認任務清單再進 code gen |
+
+> **ADR 是輸出、HITL-1 是雙向：** 架構決策的主體是「人」，AI 不自行拍板。  
+> `generate-sd` 先提出候選方案（含 tradeoff）起草 `Proposed` ADR，架構師在 HITL-1 **輸入決策**  
+> 並**審核核准**後，狀態轉 `Accepted` 並輸出至 `sdlc/adr/output/`。SD §3.3 僅保留 ADR 索引，  
+> 完整背景／替代方案／影響記錄於各 ADR 檔。詳見 [`sdlc/adr/README.md`](sdlc/adr/README.md)。
 
 > **Task List 的意義：** 在大量程式碼產出前，先讓架構師確認 Kiro 的理解正確，  
 > 避免方向錯誤造成的重工與 token 浪費。`springboot-codegen` 依此 Task List 的順序驅動。
@@ -503,10 +513,13 @@ SDLC 流程                    HITL 確認點              確認重點
 ─────────────────────────────────────────────────────────────────
 /generate-fsd Phase 1   →   ⏸ FSD 主體確認      架構邊界、功能完整性
                         →   ⏸ Gherkin 確認      測試情境覆蓋率、業務規則
-/generate-sd  Phase 1   →   ⏸ SD 設計確認       API 規格、資料表、安全設計
+/generate-sd  Phase 1   →   ⏸ SD + ADR 確認     雙向：架構師輸入決策 + 審核核准 ADR
               Phase 2   →   ⏸ Task List 確認    任務清單正確性（HITL-2）
 /springboot-codegen     →   ⏸ 測試案例確認      Red 狀態、邊界值、測試資料
 ```
+
+**HITL-1 是雙向關卡：** 不只是「審核」，還包含「輸入」——AI 先提出候選架構方案（含 tradeoff），  
+架構師輸入實際決策，AI 依此起草 ADR，再由架構師核准（`Proposed → Accepted`）。ADR 是產出的 artifact。
 
 實作程式碼（Green）為**全自動**，無需人工確認，由測試套件自動驗收。  
 `test-report`、`code-review`、`markdown-to-word` 為產出後的自動化步驟；code-review 若偵測到 Blocker 會告警並可回饋修正。

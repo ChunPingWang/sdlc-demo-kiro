@@ -69,16 +69,21 @@
 > 參照 FSD-LIFE-v1.0.md §5.2 Container Diagram。  
 > Premium API Service 內部設計詳見本文件第 4 章 C4 L3。
 
-### 3.3 關鍵架構決策
+### 3.3 關鍵架構決策（ADR 索引）
 
-| ADR 編號 | 決策摘要 | 選擇 | 主要理由 |
-|---------|---------|------|---------|
-| ADR-001 | 架構風格 | Modular Monolith | 團隊規模小、降低分散式複雜度；業務邊界清晰可未來拆分 |
-| ADR-002 | 後端語言與框架 | Java 17 / Spring Boot 3.3 | 企業技術標準；虛擬執行緒（Loom）提升並發效能 |
-| ADR-003 | 資料庫 | PostgreSQL 15 | 支援 JSON 欄位、Partial Index；費率資料關聯查詢複雜度高 |
-| ADR-004 | 快取策略 | Redis Cache-Aside | 費率資料讀多寫少，TTL 1小時符合業務需求 |
-| ADR-005 | ORM | Spring Data JPA + Hibernate 6 | 企業標準；Hibernate 6 支援 Jakarta EE 9 |
-| ADR-006 | DTO 映射 | MapStruct | 編譯期生成，零反射效能損耗 |
+> 本節僅為**索引**。完整的背景、替代方案與影響記錄於獨立的 ADR 檔（`sdlc/adr/output/`），  
+> 由 `generate-sd` 起草、架構師於 **HITL-1** 提供決策輸入並審核核准。
+
+| ADR | 決策摘要 | 選擇 | 狀態 | 詳情 |
+|-----|---------|------|------|------|
+| [ADR-0001](../../adr/output/ADR-0001-architecture-style.md) | 架構風格 | Modular Monolith | ✅ Accepted | 團隊規模小、降低分散式複雜度、可未來拆分 |
+| [ADR-0002](../../adr/output/ADR-0002-backend-framework.md) | 後端語言與框架 | Java 17 / Spring Boot 3.3 | ✅ Accepted | 企業技術標準、生態成熟 |
+| [ADR-0003](../../adr/output/ADR-0003-database.md) | 資料庫 | PostgreSQL 15 | ✅ Accepted | JSON 欄位、Partial Index、關聯查詢強 |
+| [ADR-0004](../../adr/output/ADR-0004-cache-strategy.md) | 快取策略 | Redis Cache-Aside | ✅ Accepted | 費率讀多寫少、TTL 1 小時 |
+| [ADR-0005](../../adr/output/ADR-0005-orm.md) | ORM | Spring Data JPA + Hibernate 6 | ✅ Accepted | 企業標準、Jakarta EE 9 相容 |
+| [ADR-0006](../../adr/output/ADR-0006-dto-mapping.md) | DTO 映射 | MapStruct | ✅ Accepted | 編譯期生成、零反射 |
+
+> 完整決策日誌見 [`sdlc/adr/README.md`](../../adr/README.md)。
 
 ---
 

@@ -9,21 +9,30 @@ metadata:
 
 ## 概述
 
-本 Skill 以 FSD 文件為主要輸入，結合技術架構決策，產出完整的系統設計文件（SD）。  
+本 Skill 以 FSD 文件為主要輸入，結合技術架構決策，產出完整的系統設計文件（SD）與**架構決策紀錄（ADR）**。  
 **兩個 HITL 確認關卡** 確保架構師在大量程式碼產出前驗證設計正確性，避免方向錯誤導致的 token 浪費與重工。
+
+> **ADR 是輸出，HITL-1 是雙向關卡。** 架構決策的主體是「人」，AI 不自行拍板。  
+> HITL-1 同時具備兩個方向：**輸入**（架構師提供實際決策 / 從候選方案挑選）與 **審核**（核准 ADR 由 `Proposed` 轉 `Accepted`）。  
+> 先前已 `Accepted` 的 ADR 被沿用時，屬「重用既有輸出」，非重新撰寫輸入。
 
 ```
 輸入文件
   ├─ FSD-{CODE}-*.md（功能需求、C4 L1/L2、業務循序圖、Gherkin）
-  ├─ 技術架構決策紀錄（ADR）
+  ├─ 既有已 Accepted 的 ADR（sdlc/adr/output/，若有）
   └─ 企業技術標準規範
 
        │
        ▼
-  Phase 1：產出 SD 文件本體
-  （架構設計 + C4 L3 + 技術循序圖 + API + 資料表）
+  Phase 1：產出 SD 文件本體 + 起草 ADR（Status: Proposed）
+  （架構設計 + C4 L3 + 技術循序圖 + API + 資料表；SD §3.3 為 ADR 索引）
        │
-       ▼ ⏸ HITL-1：SD 文件確認（架構師審查設計）
+       ▼ ⏸ HITL-1：雙向關卡
+       │      ① AI 提出候選方案（含 tradeoff）      系統 → 人
+       │      ② 架構師輸入決策 / 補限制            人 → 系統（輸入）
+       │      ③ AI 依決策定稿 ADR
+       │      ④ 架構師審核核准 Proposed → Accepted 人 → 系統（審核）
+       │      ⑤ 輸出 sdlc/adr/output/ADR-NNNN-*.md
        │
        ▼
   Phase 2：產出開發 Task List
@@ -43,8 +52,11 @@ metadata:
 |---------|------------|
 | FSD 文件 | `sdlc/fsd/output/FSD-{PROJECT_CODE}-*.md` |
 | Gherkin Feature | `sdlc/fsd/output/features/*.feature` |
-| ADR | 使用者提供或 `sdlc/inputs/adr-*.md` |
+| 既有 ADR（沿用）| `sdlc/adr/output/ADR-*.md`（狀態為 `Accepted` 者作為既定前提）|
 | 技術標準規範 | 使用者提供或 `sdlc/inputs/tech-standards.md` |
+
+> **注意：** ADR **不是**需要人工事先手寫的輸入文件。除非有先前專案已 `Accepted` 的 ADR 要沿用，  
+> 否則本階段的架構決策一律由本 Skill 於 Phase 1 起草為 `Proposed`，經 HITL-1 由架構師輸入決策並審核後定稿為輸出。
 
 ---
 
@@ -61,18 +73,27 @@ metadata:
 6. 第 9 章：整合需求（外部系統整合方式）
 7. 第 13 章：Gherkin Feature（識別測試邊界，影響 Service 方法設計）
 
-### Step 1-2：確認技術選型
+### Step 1-2：起草架構決策（ADR，Status: Proposed）
 
-若 ADR 已提供，直接採用；若未提供，依企業標準規範建議並在文件中標注 `⚠️ 待確認`：
+**這是本 Skill 產出 ADR 的起點。** 讀取 `sdlc/adr/output/` 既有 `Accepted` ADR 作為既定前提；  
+對每個尚未有決策的架構面向，**提出候選方案（含 tradeoff）並起草 ADR 草稿**，狀態一律標 `Proposed`：
 
-| 面向 | 來源 |
-|------|------|
-| 後端框架 | ADR / 企業標準 |
-| 資料庫 | ADR / 非功能需求（8.1 效能） |
-| 快取 | ADR / 非功能需求（8.1 效能） |
-| 訊息佇列 | ADR / FSD 整合需求（11.1） |
-| 認證方式 | ADR / FSD 安全需求（8.2） |
-| 部署平台 | ADR / FSD 可用性需求（8.3） |
+| 面向 | 決策來源 | 產出 ADR |
+|------|---------|---------|
+| 架構風格 | FSD 系統邊界 + 企業標準 | ADR-NNNN |
+| 後端框架 | 企業標準 / 非功能需求 | ADR-NNNN |
+| 資料庫 | 非功能需求（8.1 效能）+ 資料需求 | ADR-NNNN |
+| 快取 | 非功能需求（8.1 效能）| ADR-NNNN |
+| 訊息佇列 | FSD 整合需求（11.1）| ADR-NNNN |
+| 認證方式 | FSD 安全需求（8.2）| ADR-NNNN |
+| ORM / 映射 | 企業標準 | ADR-NNNN |
+| 部署平台 | FSD 可用性需求（8.3）| ADR-NNNN |
+
+**起草原則：**
+- 使用 `sdlc/adr/templates/ADR-template.md` 格式（含 Context / Decision / Alternatives / Consequences）
+- 每個決策**至少列 2 個替代方案**與否決理由，供架構師在 HITL-1 判斷
+- 草稿一律 `Status: Proposed`，**絕不自行標 `Accepted`**（核准是人的權責）
+- 編號由 `sdlc/adr/output/` 現有最大編號接續遞增，不重用
 
 ### Step 1-3：填寫 SD 文件各章節
 
@@ -80,7 +101,7 @@ metadata:
 
 | 章節 | 來源 | 關鍵產出 |
 |------|------|---------|
-| 第 3 章：架構概觀 | ADR + FSD C4 L2 | 架構風格、ADR 決策表 |
+| 第 3 章：架構概觀 | Step 1-2 起草的 ADR + FSD C4 L2 | 架構風格；§3.3 為 **ADR 索引表**（連結至 `sdlc/adr/output/`，非完整內容）|
 | 第 4 章：C4 L3 元件圖 | FSD C4 L2 + FR 業務規則 | 每個 Container 的內部元件結構 |
 | 第 5 章：技術層循序圖 | FSD 業務循序圖 → 對應技術實作 | 同步呼叫鏈、Event-Driven 非同步流程 |
 | 第 6 章：模組設計 | C4 L3 + FR 對應關係 | 模組清單、依賴關係 |
@@ -98,41 +119,62 @@ metadata:
 
 ---
 
-### ⏸ HITL-1：SD 文件確認
+### ⏸ HITL-1：SD 文件 + ADR 確認（雙向關卡）
 
-產出 SD 文件後**立即停止**，呈現以下確認清單：
+產出 SD 文件與 `Proposed` ADR 草稿後**立即停止**。此關卡為**雙向**：先由 AI 提出候選方案，  
+再由架構師**輸入決策**，最後架構師**審核核准** ADR。呈現以下清單：
 
 ```
-══════════════════════════════════════════════════════
-  ⏸  HITL-1：SD 文件完成 — 請架構師審查設計
-══════════════════════════════════════════════════════
+══════════════════════════════════════════════════════════════
+  ⏸  HITL-1：SD 文件 + ADR 完成 — 請架構師輸入決策並審核
+══════════════════════════════════════════════════════════════
 
 📄 SD 文件：sdlc/sd/output/SD-{PROJECT_CODE}-v{VERSION}.md
+📐 ADR 草稿：sdlc/adr/output/ADR-NNNN-*.md（Status: Proposed，共 {N} 筆）
 
-🏗️  架構決策摘要（請確認以下選型）：
-  □ 架構模式：{Monolith / Microservices / ...}
-  □ 後端框架：{Java/Spring Boot 3.x / ...}
-  □ 資料庫：  {PostgreSQL xx / MySQL xx / ...}
-  □ 快取：    {Redis xx / 無}
-  □ 訊息佇列：{Kafka / RabbitMQ / 無}
-  □ 認證：    {JWT / OAuth2 / ...}
-  □ 部署：    {Docker + K8s / AWS ECS / ...}
+──────────────────────────────────────────────────────────────
+① AI 提出的候選方案（每筆 ADR 附替代方案與 tradeoff，請裁決）
+──────────────────────────────────────────────────────────────
+  ADR-0001 架構風格：建議 {Modular Monolith}
+           替代：{Microservices}（否決理由：{...}）
+  ADR-0002 後端框架：建議 {Java/Spring Boot 3.x}
+           替代：{Node.js/NestJS}（否決理由：{...}）
+  ADR-0003 資料庫：  建議 {PostgreSQL xx}
+           替代：{MySQL / MongoDB}（否決理由：{...}）
+  ADR-000N {面向}：  建議 {...}  替代：{...}
+
+──────────────────────────────────────────────────────────────
+② 請架構師輸入（人 → 系統）
+──────────────────────────────────────────────────────────────
+  • 對每筆 ADR：採納建議 / 改選替代方案 / 補充限制條件
+  • 例：「ADR-0003 採 PostgreSQL，但版本改 16」
 
 📐 C4 L3 元件清單（請確認元件劃分合理）：
   □ {Container 1}：{Component A}, {Component B}, ...
-  □ {Container 2}：{Component C}, {Component D}, ...
-
 🔗 API 端點數量：{N} 個（見 SD 第 8 章）
-
 💾 資料表數量：{N} 張（見 SD 第 7 章）
 
 ⚠️  待確認問題（需架構師決定）：
   1. {QUESTION_1}
-  2. {QUESTION_2}
 
-✅  確認無誤後，請回覆「確認，產出 Task List」
-❌  若有修改，請說明修改項目，Kiro 將更新 SD 文件後重新確認
+──────────────────────────────────────────────────────────────
+③ 審核（人 → 系統）
+──────────────────────────────────────────────────────────────
+✅  回覆「核准 ADR，產出 Task List」→ Kiro 依決策定稿 ADR
+    並將狀態改為 Accepted，再產出 Task List
+❌  若需調整，說明修改項目，Kiro 更新 SD / ADR 後重新確認
 ```
+
+### Step 1-5：核准後定稿 ADR（Proposed → Accepted）
+
+架構師核准後，Kiro 依其輸入的決策：
+1. 更新各 ADR 檔的 `Decision` / `Alternatives` / `Consequences`，反映最終裁決
+2. 將 `Status` 由 `Proposed` 改為 `Accepted`，填入決策日期與決策者
+3. 更新 `sdlc/adr/README.md` 決策索引表
+4. 更新 SD §3.3 的 ADR 索引表狀態欄
+5. 若某 ADR 被新決策取代，舊檔標 `Superseded by ADR-NNNN`（保留歷史，不刪除）
+
+> 定稿後才進入 Phase 2。ADR 一旦 `Accepted`，其決策內容不再直接修改；後續變更須新開 ADR。
 
 ---
 
@@ -332,14 +374,18 @@ metadata:
 
 | 產出物 | 路徑 | 說明 |
 |-------|------|------|
-| SD 文件 | `sdlc/sd/output/SD-{PROJECT_CODE}-v{VERSION}.md` | Phase 1 產出，圖形使用 Mermaid |
+| SD 文件 | `sdlc/sd/output/SD-{PROJECT_CODE}-v{VERSION}.md` | Phase 1 產出，圖形使用 Mermaid；§3.3 為 ADR 索引 |
+| ADR（複數）| `sdlc/adr/output/ADR-NNNN-*.md` | Phase 1 起草（Proposed）→ HITL-1 核准後定稿（Accepted）|
+| ADR 決策索引 | `sdlc/adr/README.md` | 核准後同步更新決策日誌 |
 | Task List | `sdlc/sd/output/TASK-LIST-{PROJECT_CODE}-v{VERSION}.md` | Phase 2 產出，HITL-2 確認用 |
 
 ---
 
 ## 參考資源
 
-- `references/SD-template.md` — SD 文件章節結構範本
+- `references/SD-template.md` — SD 文件章節結構範本（§3.3 為 ADR 索引）
 - `references/SD-word-style-guide.md` — Word 套版轉換規範
+- ADR 模板：`sdlc/adr/templates/ADR-template.md`
+- ADR 決策日誌：`sdlc/adr/README.md`
 - FSD 輸入：`sdlc/fsd/output/FSD-{PROJECT_CODE}-*.md`
 - Gherkin 輸入：`sdlc/fsd/output/features/*.feature`
