@@ -86,69 +86,60 @@
 
 ### 4.1 Premium API Service 元件圖
 
-```plantuml
-@startuml C4_L3_LIFE
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+```mermaid
+C4Component
+  title Component Diagram — Premium API Service
 
-title Component Diagram — Premium API Service
-
-Container_Boundary(premium_api, "Premium API Service (Spring Boot 3)") {
-
-    ' ── 保費試算模組 ──
+  Container_Boundary(premium_api, "Premium API Service (Spring Boot 3)") {
     Component(calc_controller, "PremiumCalculationController", "REST Controller", "處理 POST /api/v1/premium/calculate 請求")
     Component(calc_service, "PremiumCalculationService", "Service", "保費試算核心邏輯、BR-001~BR-005 業務規則驗證")
     Component(rate_query_service, "RateQueryService", "Service", "費率查詢：先查 Redis，Cache Miss 再查 DB")
 
-    ' ── 費率表管理模組 ──
     Component(rate_controller, "RateTableController", "REST Controller", "處理 POST /api/v1/rate-tables 費率上傳")
     Component(rate_service, "RateTableService", "Service", "CSV 解析、批次匯入、版本管理、快取清除")
     Component(csv_parser, "CsvRateParser", "Component", "解析 CSV：age, gender, payment_period, rate")
     Component(storage_client, "FileStorageClient", "HTTP Client", "上傳 CSV 原始檔至 MinIO/S3")
 
-    ' ── 試算紀錄模組 ──
     Component(record_controller, "CalculationRecordController", "REST Controller", "處理 GET /api/v1/calculation-records 查詢")
     Component(record_service, "CalculationRecordService", "Service", "試算紀錄 CRUD、權限過濾（Agent 只看自己）")
 
-    ' ── 共用基礎設施 ──
     Component(rate_repo, "RateEntryRepository", "JPA Repository", "費率明細資料存取")
     Component(version_repo, "RateTableVersionRepository", "JPA Repository", "費率版本資料存取")
     Component(record_repo, "CalculationRecordRepository", "JPA Repository", "試算紀錄資料存取")
     Component(cache_manager, "RateCacheManager", "Cache Component", "Redis 費率快取封裝：GET/SET/EVICT")
     Component(exception_handler, "GlobalExceptionHandler", "Advice", "@RestControllerAdvice 統一例外處理")
-}
+  }
 
-Container(api_gw, "API Gateway", "Spring Cloud Gateway", "")
-ContainerDb(postgres, "PostgreSQL 15", "", "")
-ContainerDb(redis, "Redis 7", "", "")
-Container(minio, "MinIO / S3", "", "")
+  Container(api_gw, "API Gateway", "Spring Cloud Gateway", "")
+  ContainerDb(postgres, "PostgreSQL 15", "", "")
+  ContainerDb(redis, "Redis 7", "", "")
+  Container(minio, "MinIO / S3", "", "")
 
-Rel(api_gw, calc_controller, "POST /calculate", "HTTP")
-Rel(api_gw, rate_controller, "POST /rate-tables", "HTTP")
-Rel(api_gw, record_controller, "GET /calculation-records", "HTTP")
+  Rel(api_gw, calc_controller, "POST /calculate", "HTTP")
+  Rel(api_gw, rate_controller, "POST /rate-tables", "HTTP")
+  Rel(api_gw, record_controller, "GET /calculation-records", "HTTP")
 
-Rel(calc_controller, calc_service, "呼叫試算")
-Rel(calc_service, rate_query_service, "查詢費率")
-Rel(calc_service, record_repo, "保存試算紀錄")
-Rel(rate_query_service, cache_manager, "查詢/寫入快取")
-Rel(rate_query_service, rate_repo, "Cache Miss 時查詢 DB")
+  Rel(calc_controller, calc_service, "呼叫試算")
+  Rel(calc_service, rate_query_service, "查詢費率")
+  Rel(calc_service, record_repo, "保存試算紀錄")
+  Rel(rate_query_service, cache_manager, "查詢/寫入快取")
+  Rel(rate_query_service, rate_repo, "Cache Miss 時查詢 DB")
 
-Rel(rate_controller, rate_service, "委派上傳處理")
-Rel(rate_service, csv_parser, "解析 CSV")
-Rel(rate_service, storage_client, "備份原始檔")
-Rel(rate_service, version_repo, "建立版本紀錄")
-Rel(rate_service, rate_repo, "批次 INSERT 費率")
-Rel(rate_service, cache_manager, "清除費率快取")
+  Rel(rate_controller, rate_service, "委派上傳處理")
+  Rel(rate_service, csv_parser, "解析 CSV")
+  Rel(rate_service, storage_client, "備份原始檔")
+  Rel(rate_service, version_repo, "建立版本紀錄")
+  Rel(rate_service, rate_repo, "批次 INSERT 費率")
+  Rel(rate_service, cache_manager, "清除費率快取")
 
-Rel(record_controller, record_service, "查詢紀錄")
-Rel(record_service, record_repo, "資料存取")
+  Rel(record_controller, record_service, "查詢紀錄")
+  Rel(record_service, record_repo, "資料存取")
 
-Rel(cache_manager, redis, "快取操作", "Lettuce")
-Rel(rate_repo, postgres, "讀寫", "JPA/JDBC")
-Rel(version_repo, postgres, "讀寫", "JPA/JDBC")
-Rel(record_repo, postgres, "讀寫", "JPA/JDBC")
-Rel(storage_client, minio, "上傳 CSV", "S3 API")
-
-@enduml
+  Rel(cache_manager, redis, "快取操作", "Lettuce")
+  Rel(rate_repo, postgres, "讀寫", "JPA/JDBC")
+  Rel(version_repo, postgres, "讀寫", "JPA/JDBC")
+  Rel(record_repo, postgres, "讀寫", "JPA/JDBC")
+  Rel(storage_client, minio, "上傳 CSV", "S3 API")
 ```
 
 > 圖 4-1：Premium API Service 元件圖（C4 L3）
@@ -175,88 +166,54 @@ Rel(storage_client, minio, "上傳 CSV", "S3 API")
 
 ### 5.1 保費試算技術流程（對應 FSD 圖 6-1）
 
-```plantuml
-@startuml SEQ_TECH_LIFE_01
-title 保費試算技術流程（Cache-Aside + 業務驗證）
+```mermaid
+sequenceDiagram
+  participant GW as API Gateway
+  participant Ctrl as PremiumCalculation<br/>Controller
+  participant Svc as PremiumCalculation<br/>Service
+  participant RateQ as RateQuery<br/>Service
+  participant Cache as RateCache<br/>Manager
+  participant Repo as RateEntry<br/>Repository
+  participant Redis as Redis
+  participant DB as PostgreSQL
+  participant RecRepo as CalculationRecord<br/>Repository
 
-participant "API Gateway" as GW
-participant "PremiumCalculation\nController" as Ctrl
-participant "PremiumCalculation\nService" as Svc
-participant "RateQuery\nService" as RateQ
-participant "RateCache\nManager" as Cache
-participant "RateEntry\nRepository" as Repo
-database "Redis" as Redis
-database "PostgreSQL" as DB
-participant "CalculationRecord\nRepository" as RecRepo
-
-GW -> Ctrl : POST /api/v1/premium/calculate\n+ X-Agent-Id: {uuid}
-activate Ctrl
-
-Ctrl -> Ctrl : @Valid PremiumCalculateRequest\n（Bean Validation 輸入格式驗證）
-
-Ctrl -> Svc : calculate(request, agentId)
-activate Svc
-
-note over Svc
-  業務規則驗證（BR-001 ~ BR-003）：
-  age in [0..70]  → else throw AgeOutOfRangeException
-  amount in [100..5000] → else throw AmountOutOfRangeException
-  paymentPeriod in {10,20,30,99} → else throw InvalidPaymentPeriodException
-end note
-
-Svc -> RateQ : findRate(productCode, age, gender, paymentPeriod)
-activate RateQ
-
-RateQ -> Cache : get("rate:{productCode}:{age}:{gender}:{period}")
-activate Cache
-Cache -> Redis : GET rate:LIFE-WL-01:35:M:20
-Redis --> Cache : nil（Cache Miss）
-deactivate Cache
-
-RateQ -> Repo : findEffectiveRate(productCode, age, gender, paymentPeriod, now)
-activate Repo
-note right of Repo
-  JPQL:
-  SELECT r FROM RateEntry r
-  JOIN r.rateTableVersion v
-  WHERE v.productCode = :productCode
-  AND r.age = :age AND r.gender = :gender
-  AND r.paymentPeriod = :paymentPeriod
-  AND v.effectiveDate <= :now
-  AND v.status = ACTIVE
-  ORDER BY v.effectiveDate DESC
-  LIMIT 1
-end note
-Repo -> DB : 執行 SQL
-DB --> Repo : rate = 12.50
-deactivate Repo
-
-RateQ -> Cache : set("rate:LIFE-WL-01:35:M:20", 12.50, TTL=3600s)
-Cache -> Redis : SET ... EX 3600
-Redis --> Cache : OK
-
-RateQ --> Svc : rate = 12.50
-deactivate RateQ
-
-note over Svc
-  保費計算（BR-005）：
-  annualPremium  = ROUND(1000萬 / 1000 × 12.50) = 125,000
-  monthlyPremium = ROUND(125,000 / 12 × 1.03)   = 10,729
-end note
-
-Svc -> RecRepo : save(CalculationRecord{agentId, request, result, SUCCESS})
-activate RecRepo
-RecRepo -> DB : INSERT INTO calculation_records ...
-DB --> RecRepo : id = uuid
-deactivate RecRepo
-
-Svc --> Ctrl : PremiumCalculateResult{annualPremium=125000, monthlyPremium=10729}
-deactivate Svc
-
-Ctrl --> GW : 200 OK\n{code:"SUCCESS", data:{annualPremium:125000, monthlyPremium:10729}}
-deactivate Ctrl
-
-@enduml
+  GW->>Ctrl: POST /api/v1/premium/calculate<br/>+ X-Agent-Id: {uuid}
+  activate Ctrl
+  Ctrl->>Ctrl: @Valid PremiumCalculateRequest
+  Ctrl->>Svc: calculate(request, agentId)
+  activate Svc
+  Note over Svc: BR-001: age in [0..70]<br/>BR-002: amount in [100..5000]<br/>BR-003: paymentPeriod in {10,20,30,99}
+  Svc->>RateQ: findRate(productCode, age, gender, paymentPeriod)
+  activate RateQ
+  RateQ->>Cache: get("rate:LIFE-WL-01:35:M:20")
+  activate Cache
+  Cache->>Redis: GET rate:LIFE-WL-01:35:M:20
+  Redis-->>Cache: nil（Cache Miss）
+  deactivate Cache
+  RateQ->>Repo: findEffectiveRate(productCode, age, gender, paymentPeriod, now)
+  activate Repo
+  Repo->>DB: SELECT（JOIN rate_table_versions）
+  activate DB
+  DB-->>Repo: rate = 12.50
+  deactivate DB
+  deactivate Repo
+  RateQ->>Cache: set("rate:LIFE-WL-01:35:M:20", 12.50, TTL=3600s)
+  Cache->>Redis: SET ... EX 3600
+  RateQ-->>Svc: rate = 12.50
+  deactivate RateQ
+  Note over Svc: BR-005:<br/>annualPremium = ROUND(1000萬/1000×12.50) = 125,000<br/>monthlyPremium = ROUND(125,000/12×1.03) = 10,729
+  Svc->>RecRepo: save(CalculationRecord{agentId, SUCCESS})
+  activate RecRepo
+  RecRepo->>DB: INSERT INTO calculation_records
+  activate DB
+  DB-->>RecRepo: id = uuid
+  deactivate DB
+  deactivate RecRepo
+  Svc-->>Ctrl: PremiumCalculateResult{annualPremium=125000, monthlyPremium=10729}
+  deactivate Svc
+  Ctrl-->>GW: 200 OK {code:"SUCCESS", data:{annualPremium:125000, monthlyPremium:10729}}
+  deactivate Ctrl
 ```
 
 > 圖 5-1：保費試算技術流程（Cache-Aside）
@@ -274,76 +231,57 @@ deactivate Ctrl
 
 ### 5.2 費率表上傳技術流程（對應 FSD 圖 6-2）
 
-```plantuml
-@startuml SEQ_TECH_LIFE_02
-title 費率表上傳技術流程（批次匯入 + 快取清除）
+```mermaid
+sequenceDiagram
+  participant GW as API Gateway
+  participant Ctrl as RateTable<br/>Controller
+  participant Svc as RateTable<br/>Service
+  participant Parser as CsvRate<br/>Parser
+  participant Storage as FileStorage<br/>Client
+  participant VerRepo as RateTableVersion<br/>Repository
+  participant EntryRepo as RateEntry<br/>Repository
+  participant Cache as RateCache<br/>Manager
+  participant DB as PostgreSQL
+  participant S3 as MinIO/S3
+  participant Redis as Redis
 
-participant "API Gateway" as GW
-participant "RateTable\nController" as Ctrl
-participant "RateTable\nService" as Svc
-participant "CsvRate\nParser" as Parser
-participant "FileStorage\nClient" as Storage
-participant "RateTableVersion\nRepository" as VerRepo
-participant "RateEntry\nRepository" as EntryRepo
-participant "RateCache\nManager" as Cache
-database "PostgreSQL" as DB
-database "MinIO/S3" as S3
-database "Redis" as Redis
-
-GW -> Ctrl : POST /api/v1/rate-tables\nMultipart: file + productCode + effectiveDate\n+ X-Admin-Id: {uuid}
-activate Ctrl
-Ctrl -> Ctrl : @Valid RateTableUploadRequest\n確認 effectiveDate >= today
-
-Ctrl -> Svc : uploadRateTable(request, adminId)
-activate Svc
-
-Svc -> Svc : 檢查同商品同生效日衝突\n→ RateTableVersionRepository.existsByProductCodeAndEffectiveDate()\n→ 衝突拋 RateVersionConflictException (409)
-
-Svc -> Parser : parse(csvInputStream)
-activate Parser
-note right of Parser
-  逐行解析 CSV：
-  age(int), gender(M/F), payment_period(int), rate(BigDecimal)
-  驗證：欄位完整性、型態、rate > 0
-  → 失敗拋 InvalidCsvFormatException (400)
-end note
-Parser --> Svc : List<RateEntryDto>（約 500 筆）
-deactivate Parser
-
-Svc -> Storage : upload(productCode, version, csvBytes)
-activate Storage
-Storage -> S3 : PUT /rate-tables/{productCode}/v{n}.csv
-S3 --> Storage : ETag（MD5 Hash）
-deactivate Storage
-
-Svc -> VerRepo : save(RateTableVersion{productCode, effectiveDate, PENDING})
-activate VerRepo
-VerRepo -> DB : INSERT INTO rate_table_versions
-DB --> VerRepo : versionId = uuid
-deactivate VerRepo
-
-Svc -> EntryRepo : saveAll(rateEntries)  // 批次 INSERT，每批 100 筆
-activate EntryRepo
-loop 每批 100 筆（共 5 批）
-    EntryRepo -> DB : INSERT INTO rate_entries (batch)
-end
-DB --> EntryRepo : OK
-deactivate EntryRepo
-
-Svc -> VerRepo : updateStatus(versionId, ACTIVE)
-VerRepo -> DB : UPDATE rate_table_versions SET status='ACTIVE'
-
-Svc -> Cache : evictByProductCode(productCode)
-Cache -> Redis : DEL rate:LIFE-WL-01:*（SCAN + DEL）
-Redis --> Cache : OK
-
-Svc --> Ctrl : RateTableUploadResult{versionId, entryCount=500, effectiveDate}
-deactivate Svc
-
-Ctrl --> GW : 201 Created\n{code:"SUCCESS", data:{versionId, entryCount:500}}
-deactivate Ctrl
-
-@enduml
+  GW->>Ctrl: POST /api/v1/rate-tables<br/>Multipart: file + productCode + effectiveDate<br/>+ X-Admin-Id: {uuid}
+  activate Ctrl
+  Ctrl->>Ctrl: @Valid RateTableUploadRequest<br/>effectiveDate >= today
+  Ctrl->>Svc: uploadRateTable(request, adminId)
+  activate Svc
+  Svc->>Svc: 檢查同商品同生效日衝突<br/>→ 衝突拋 RateVersionConflictException (409)
+  Svc->>Parser: parse(csvInputStream)
+  activate Parser
+  Note over Parser: 逐行解析 CSV<br/>age, gender, payment_period, rate<br/>驗證欄位完整性、型態、rate > 0
+  Parser-->>Svc: List<RateEntryDto>（約 500 筆）
+  deactivate Parser
+  Svc->>Storage: upload(productCode, version, csvBytes)
+  activate Storage
+  Storage->>S3: PUT /rate-tables/{productCode}/v{n}.csv
+  S3-->>Storage: ETag（MD5 Hash）
+  deactivate Storage
+  Svc->>VerRepo: save(RateTableVersion{PENDING})
+  activate VerRepo
+  VerRepo->>DB: INSERT INTO rate_table_versions
+  DB-->>VerRepo: versionId = uuid
+  deactivate VerRepo
+  Svc->>EntryRepo: saveAll(rateEntries) 批次 100 筆
+  activate EntryRepo
+  loop 每批 100 筆（共 5 批）
+    EntryRepo->>DB: INSERT INTO rate_entries (batch)
+  end
+  DB-->>EntryRepo: OK
+  deactivate EntryRepo
+  Svc->>VerRepo: updateStatus(versionId, ACTIVE)
+  VerRepo->>DB: UPDATE rate_table_versions SET status='ACTIVE'
+  Svc->>Cache: evictByProductCode(productCode)
+  Cache->>Redis: DEL rate:LIFE-WL-01:*
+  Redis-->>Cache: OK
+  Svc-->>Ctrl: RateTableUploadResult{versionId, entryCount=500}
+  deactivate Svc
+  Ctrl-->>GW: 201 Created {code:"SUCCESS", data:{versionId, entryCount:500}}
+  deactivate Ctrl
 ```
 
 > 圖 5-2：費率表上傳技術流程

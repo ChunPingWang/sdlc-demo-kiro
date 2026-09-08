@@ -87,30 +87,26 @@
 
 ### 5.1 C4 L1 — System Context Diagram
 
-```plantuml
-@startuml C4_L1_LIFE
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+```mermaid
+C4Context
+  title System Context — 壽險保費試算系統
 
-title System Context — 壽險保費試算系統
+  Person(agent, "業務員 (Agent)", "執行保費試算、查詢試算歷程")
+  Person(admin, "系統管理員 (Admin)", "維護費率表、查詢所有試算紀錄")
+  Person(guest, "訪客 (Guest)", "執行匿名保費試算")
 
-Person(agent, "業務員 (Agent)", "執行保費試算、查詢試算歷程")
-Person(admin, "系統管理員 (Admin)", "維護費率表、查詢所有試算紀錄")
-Person(guest, "訪客 (Guest)", "執行匿名保費試算")
+  System(premium_system, "壽險保費試算系統", "提供即時保費試算、費率表管理、試算紀錄查詢")
 
-System(premium_system, "壽險保費試算系統", "提供即時保費試算、費率表管理、試算紀錄查詢")
+  System_Ext(auth_system, "企業身份驗證系統 (IAM)", "SSO 登入驗證")
+  System_Ext(actuarial_system, "精算系統", "費率表來源（定期匯出 CSV）")
+  System_Ext(notification, "通知服務", "試算結果 Email 發送")
 
-System_Ext(auth_system, "企業身份驗證系統 (IAM)", "SSO 登入驗證")
-System_Ext(actuarial_system, "精算系統", "費率表來源（定期匯出 CSV）")
-System_Ext(notification, "通知服務", "試算結果 Email 發送")
-
-Rel(agent, premium_system, "保費試算、查詢歷程", "HTTPS")
-Rel(admin, premium_system, "費率表維護", "HTTPS")
-Rel(guest, premium_system, "匿名試算", "HTTPS")
-Rel(premium_system, auth_system, "身份驗證", "OAuth 2.0 / OIDC")
-Rel(actuarial_system, premium_system, "費率表 CSV 匯入", "SFTP / API")
-Rel(premium_system, notification, "發送試算結果", "REST API")
-
-@enduml
+  Rel(agent, premium_system, "保費試算、查詢歷程", "HTTPS")
+  Rel(admin, premium_system, "費率表維護", "HTTPS")
+  Rel(guest, premium_system, "匿名試算", "HTTPS")
+  Rel(premium_system, auth_system, "身份驗證", "OAuth 2.0 / OIDC")
+  Rel(actuarial_system, premium_system, "費率表 CSV 匯入", "SFTP / API")
+  Rel(premium_system, notification, "發送試算結果", "REST API")
 ```
 
 > 圖 5-1：壽險保費試算系統情境圖（C4 L1）
@@ -128,38 +124,34 @@ Rel(premium_system, notification, "發送試算結果", "REST API")
 
 ### 5.2 C4 L2 — Container Diagram
 
-```plantuml
-@startuml C4_L2_LIFE
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+```mermaid
+C4Container
+  title Container Diagram — 壽險保費試算系統
 
-title Container Diagram — 壽險保費試算系統
+  Person(agent, "業務員", "")
+  Person(admin, "系統管理員", "")
 
-Person(agent, "業務員", "")
-Person(admin, "系統管理員", "")
-
-System_Boundary(system, "壽險保費試算系統") {
+  System_Boundary(system, "壽險保費試算系統") {
     Container(web_app, "Web Application", "React 18 + TypeScript", "業務員保費試算介面、管理員費率表維護介面")
     Container(api_gateway, "API Gateway", "Spring Cloud Gateway", "路由、JWT 驗證、Rate Limiting（200 req/s）")
     Container(premium_api, "Premium API Service", "Java 17 / Spring Boot 3", "保費試算核心業務邏輯、費率查詢、試算紀錄管理")
     ContainerDb(db, "PostgreSQL 15", "Relational DB", "費率表、試算紀錄、商品設定")
     ContainerDb(cache, "Redis 7", "In-Memory Cache", "費率資料快取（TTL 1小時）、Session")
     Container(file_storage, "MinIO / S3", "Object Storage", "費率表 CSV 原始檔備份")
-}
+  }
 
-System_Ext(auth_system, "企業 IAM", "")
-System_Ext(notification, "通知服務", "")
+  System_Ext(auth_system, "企業 IAM", "")
+  System_Ext(notification, "通知服務", "")
 
-Rel(agent, web_app, "使用", "HTTPS 443")
-Rel(admin, web_app, "管理", "HTTPS 443")
-Rel(web_app, api_gateway, "API 呼叫", "HTTPS / REST JSON")
-Rel(api_gateway, auth_system, "Token 驗證", "OAuth 2.0 Introspect")
-Rel(api_gateway, premium_api, "路由", "HTTP 8080")
-Rel(premium_api, db, "讀寫", "JDBC / JPA")
-Rel(premium_api, cache, "快取", "Lettuce / Redis Protocol")
-Rel(premium_api, file_storage, "儲存 CSV", "S3 API")
-Rel(premium_api, notification, "發送試算結果", "REST API")
-
-@enduml
+  Rel(agent, web_app, "使用", "HTTPS 443")
+  Rel(admin, web_app, "管理", "HTTPS 443")
+  Rel(web_app, api_gateway, "API 呼叫", "HTTPS / REST JSON")
+  Rel(api_gateway, auth_system, "Token 驗證", "OAuth 2.0 Introspect")
+  Rel(api_gateway, premium_api, "路由", "HTTP 8080")
+  Rel(premium_api, db, "讀寫", "JDBC / JPA")
+  Rel(premium_api, cache, "快取", "Lettuce / Redis Protocol")
+  Rel(premium_api, file_storage, "儲存 CSV", "S3 API")
+  Rel(premium_api, notification, "發送試算結果", "REST API")
 ```
 
 > 圖 5-2：壽險保費試算系統容器圖（C4 L2）
@@ -179,57 +171,41 @@ Rel(premium_api, notification, "發送試算結果", "REST API")
 
 ### 6.1 保費試算（已登入業務員）（對應 FR-CALC-001）
 
-```plantuml
-@startuml SEQ_LIFE_01
-title 保費試算流程（已登入業務員）
+```mermaid
+sequenceDiagram
+  actor Agent as 業務員
+  participant Web as Web App
+  participant GW as API Gateway
+  participant API as Premium API
+  participant Cache as Redis Cache
+  participant DB as PostgreSQL
 
-actor "業務員" as Agent
-participant "Web App" as Web
-participant "API Gateway" as GW
-participant "Premium API" as API
-database "Redis Cache" as Cache
-database "PostgreSQL" as DB
-
-Agent -> Web : 輸入被保人資料\n（年齡/性別/保額/繳費年期/商品代碼）
-activate Web
-
-Web -> GW : POST /api/v1/premium/calculate\nAuthorization: Bearer {JWT}
-activate GW
-
-GW -> GW : 驗證 JWT Token\n解析 agentId, roles
-
-GW -> API : 轉送請求 + X-Agent-Id Header
-activate API
-
-API -> API : 輸入驗證\n- 年齡 0-70\n- 保額 100-5000 萬\n- 繳費年期合法值
-
-API -> Cache : GET rate:{productCode}:{age}:{gender}:{paymentPeriod}
-activate Cache
-Cache --> API : null（Cache Miss）
-deactivate Cache
-
-API -> DB : SELECT rate FROM rate_table\nWHERE product_code=? AND age=? AND gender=? AND payment_period=?\nAND effective_date <= NOW() ORDER BY effective_date DESC LIMIT 1
-activate DB
-DB --> API : rate = 12.5
-deactivate DB
-
-API -> Cache : SET rate:{key} = 12.5 TTL=3600s
-API -> API : 計算保費\n年繳 = 1000萬 / 1000 × 12.5 = 125,000\n月繳 = 125,000 / 12 × 1.03 = 10,729
-
-API -> DB : INSERT INTO calculation_records\n(agent_id, input_params, result, status)
-activate DB
-DB --> API : record_id = uuid
-deactivate DB
-
-API --> GW : 200 OK\n{annualPremium: 125000, monthlyPremium: 10729, ...}
-deactivate API
-GW --> Web : 200 OK
-deactivate GW
-
-Web --> Agent : 顯示試算結果\n年繳 NT$125,000 / 月繳 NT$10,729
-deactivate Web
-
-@enduml
+  Agent->>Web: 輸入被保人資料<br/>（年齡/性別/保額/繳費年期/商品代碼）
+  activate Web
+  Web->>GW: POST /api/v1/premium/calculate<br/>Authorization: Bearer {JWT}
+  activate GW
+  GW->>GW: 驗證 JWT Token，解析 agentId/roles
+  GW->>API: 轉送請求 + X-Agent-Id Header
+  activate API
+  API->>API: 業務規則驗證<br/>年齡 0-70 / 保額 100-5000 / 繳費年期合法值
+  API->>Cache: GET rate:{productCode}:{age}:{gender}:{paymentPeriod}
+  Cache-->>API: null（Cache Miss）
+  API->>DB: SELECT rate WHERE product_code=? AND age=?<br/>AND gender=? AND payment_period=?<br/>ORDER BY effective_date DESC LIMIT 1
+  activate DB
+  DB-->>API: rate = 12.5
+  deactivate DB
+  API->>Cache: SET rate:{key} = 12.5 TTL=3600s
+  API->>API: 計算保費<br/>年繳 = 125,000 / 月繳 = 10,729
+  API->>DB: INSERT INTO calculation_records
+  activate DB
+  DB-->>API: record_id = uuid
+  deactivate DB
+  API-->>GW: 200 OK {annualPremium: 125000, monthlyPremium: 10729}
+  deactivate API
+  GW-->>Web: 200 OK
+  deactivate GW
+  Web-->>Agent: 顯示試算結果<br/>年繳 NT$125,000 / 月繳 NT$10,729
+  deactivate Web
 ```
 
 > 圖 6-1：保費試算流程循序圖
@@ -253,44 +229,36 @@ deactivate Web
 
 ### 6.2 費率表上傳（管理員）（對應 FR-RATE-001）
 
-```plantuml
-@startuml SEQ_LIFE_02
-title 費率表上傳流程
+```mermaid
+sequenceDiagram
+  actor Admin as 管理員
+  participant Web as Web App
+  participant GW as API Gateway
+  participant API as Premium API
+  participant Storage as MinIO/S3
+  participant DB as PostgreSQL
 
-actor "管理員" as Admin
-participant "Web App" as Web
-participant "API Gateway" as GW
-participant "Premium API" as API
-participant "MinIO/S3" as Storage
-database "PostgreSQL" as DB
-
-Admin -> Web : 選擇 CSV 檔案\n輸入生效日期、商品代碼
-Web -> GW : POST /api/v1/rate-tables\nContent-Type: multipart/form-data
-activate GW
-GW -> GW : 驗證 JWT + 確認 ROLE_ADMIN
-GW -> API : 轉送請求
-activate API
-
-API -> API : 驗證 CSV 格式\n（欄位完整性、資料型態）
-
-API -> Storage : PUT /rate-tables/{productCode}/{version}.csv
-activate Storage
-Storage --> API : ETag（檔案 Hash）
-deactivate Storage
-
-API -> DB : BEGIN TRANSACTION\nINSERT INTO rate_table_versions\nINSERT INTO rate_entries (批次，約 500 筆)\nCOMMIT
-activate DB
-DB --> API : version_id
-deactivate DB
-
-API -> API : 清除相關費率快取\nDEL rate:{productCode}:*
-
-API --> GW : 201 Created\n{versionId, effectiveDate, entryCount: 500}
-deactivate API
-GW --> Web : 201 Created
-deactivate GW
-Web --> Admin : 顯示上傳成功\n費率版本 v3，生效日 2026-10-01，共 500 筆
-@enduml
+  Admin->>Web: 選擇 CSV 檔案，輸入生效日期、商品代碼
+  Web->>GW: POST /api/v1/rate-tables<br/>Content-Type: multipart/form-data
+  activate GW
+  GW->>GW: 驗證 JWT + 確認 ROLE_ADMIN
+  GW->>API: 轉送請求
+  activate API
+  API->>API: 驗證 CSV 格式（欄位完整性、資料型態）
+  API->>Storage: PUT /rate-tables/{productCode}/{version}.csv
+  activate Storage
+  Storage-->>API: ETag（檔案 Hash）
+  deactivate Storage
+  API->>DB: BEGIN TRANSACTION<br/>INSERT INTO rate_table_versions<br/>INSERT INTO rate_entries（批次，約 500 筆）<br/>COMMIT
+  activate DB
+  DB-->>API: version_id
+  deactivate DB
+  API->>API: 清除相關費率快取 DEL rate:{productCode}:*
+  API-->>GW: 201 Created {versionId, effectiveDate, entryCount: 500}
+  deactivate API
+  GW-->>Web: 201 Created
+  deactivate GW
+  Web-->>Admin: 顯示上傳成功<br/>費率版本 v3，生效日 2026-10-01，共 500 筆
 ```
 
 > 圖 6-2：費率表上傳流程循序圖

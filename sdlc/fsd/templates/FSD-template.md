@@ -81,32 +81,28 @@
 ## 5. 系統架構圖（C4 Model）
 
 > 本節使用 [C4 Model](https://c4model.com) 描述系統架構的前兩個層次，提供業務與技術人員共同理解的視覺化基礎。  
-> 圖表以 PlantUML（C4-PlantUML）或 draw.io 繪製，來源檔存放於 `sdlc/fsd/output/assets/`。
+> 圖表以 **Mermaid** 繪製，可直接在 GitHub / GitLab / Obsidian / VS Code 預覽，無需額外工具。
 
 ### 5.1 C4 L1 — System Context Diagram（系統情境圖）
 
 **目的：** 說明 {PROJECT_NAME} 系統與外部使用者、外部系統之間的高階關係。
 
-```plantuml
-@startuml C4_L1_{PROJECT_CODE}
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+```mermaid
+C4Context
+  title System Context — {PROJECT_NAME}
 
-title System Context — {PROJECT_NAME}
+  Person(user_role1, "{ROLE_1}", "{ROLE_DESC_1}")
+  Person(user_role2, "{ROLE_2}", "{ROLE_DESC_2}")
 
-Person(user_role1, "{ROLE_1}", "{ROLE_DESC_1}")
-Person(user_role2, "{ROLE_2}", "{ROLE_DESC_2}")
+  System(system, "{PROJECT_NAME}", "{系統一句話描述}")
 
-System(system, "{PROJECT_NAME}", "{系統一句話描述}")
+  System_Ext(ext_system1, "{EXTERNAL_SYSTEM_1}", "{外部系統說明}")
+  System_Ext(ext_system2, "{EXTERNAL_SYSTEM_2}", "{外部系統說明}")
 
-System_Ext(ext_system1, "{EXTERNAL_SYSTEM_1}", "{外部系統說明}")
-System_Ext(ext_system2, "{EXTERNAL_SYSTEM_2}", "{外部系統說明}")
-
-Rel(user_role1, system, "使用", "HTTPS")
-Rel(user_role2, system, "管理", "HTTPS")
-Rel(system, ext_system1, "呼叫", "REST API")
-Rel(system, ext_system2, "推送通知", "Webhook")
-
-@enduml
+  Rel(user_role1, system, "使用", "HTTPS")
+  Rel(user_role2, system, "管理", "HTTPS")
+  Rel(system, ext_system1, "呼叫", "REST API")
+  Rel(system, ext_system2, "推送通知", "Webhook")
 ```
 
 > 圖 5-1：{PROJECT_NAME} 系統情境圖（C4 L1）
@@ -126,15 +122,13 @@ Rel(system, ext_system2, "推送通知", "Webhook")
 
 **目的：** 說明 {PROJECT_NAME} 系統內部由哪些可部署單元（Container）組成，以及它們之間的互動關係。
 
-```plantuml
-@startuml C4_L2_{PROJECT_CODE}
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+```mermaid
+C4Container
+  title Container Diagram — {PROJECT_NAME}
 
-title Container Diagram — {PROJECT_NAME}
+  Person(user_role1, "{ROLE_1}", "{ROLE_DESC_1}")
 
-Person(user_role1, "{ROLE_1}", "{ROLE_DESC_1}")
-
-System_Boundary(system, "{PROJECT_NAME}") {
+  System_Boundary(system, "{PROJECT_NAME}") {
     Container(web_app, "Web Application", "{React / Vue / Angular}", "提供使用者操作介面")
     Container(api_gateway, "API Gateway", "{Kong / AWS API GW / Nginx}", "路由、認證、限流")
     Container(backend, "{Backend Service}", "{Node.js / Java / ...}", "{核心業務邏輯}")
@@ -142,20 +136,18 @@ System_Boundary(system, "{PROJECT_NAME}") {
     ContainerDb(db, "{Primary Database}", "{PostgreSQL / MySQL}", "主要業務資料儲存")
     ContainerDb(cache, "Cache", "Redis", "熱點資料快取、Session")
     Container(mq, "Message Queue", "{Kafka / RabbitMQ}", "非同步訊息傳遞")
-}
+  }
 
-System_Ext(ext_system1, "{EXTERNAL_SYSTEM_1}", "{說明}")
+  System_Ext(ext_system1, "{EXTERNAL_SYSTEM_1}", "{說明}")
 
-Rel(user_role1, web_app, "使用", "HTTPS")
-Rel(web_app, api_gateway, "API 呼叫", "HTTPS / REST")
-Rel(api_gateway, backend, "路由", "HTTP")
-Rel(backend, db, "讀寫", "JDBC / ORM")
-Rel(backend, cache, "讀寫", "Redis Protocol")
-Rel(backend, mq, "發布訊息", "AMQP / Kafka")
-Rel(mq, worker, "消費訊息", "AMQP / Kafka")
-Rel(backend, ext_system1, "呼叫", "REST API")
-
-@enduml
+  Rel(user_role1, web_app, "使用", "HTTPS")
+  Rel(web_app, api_gateway, "API 呼叫", "HTTPS / REST")
+  Rel(api_gateway, backend, "路由", "HTTP")
+  Rel(backend, db, "讀寫", "JDBC / ORM")
+  Rel(backend, cache, "讀寫", "Redis Protocol")
+  Rel(backend, mq, "發布訊息", "AMQP / Kafka")
+  Rel(mq, worker, "消費訊息", "AMQP / Kafka")
+  Rel(backend, ext_system1, "呼叫", "REST API")
 ```
 
 > 圖 5-2：{PROJECT_NAME} 容器圖（C4 L2）
@@ -177,47 +169,38 @@ Rel(backend, ext_system1, "呼叫", "REST API")
 ## 6. 業務流程循序圖
 
 > 本節針對核心業務流程，以 UML Sequence Diagram 描述使用者與系統的互動時序。  
-> 使用 PlantUML 繪製，來源檔存放於 `sdlc/fsd/output/assets/`。
+> 使用 **Mermaid** 繪製，可直接在 GitHub / GitLab 預覽。
 
 ### 6.1 {核心流程一}（對應 FR-{MODULE}-{N}）
 
 **流程說明：** {簡述此流程的業務目的}
 
-```plantuml
-@startuml SEQ_{PROJECT_CODE}_01
-title {流程名稱}
+```mermaid
+sequenceDiagram
+  actor User as {ROLE_1}
+  participant Web as Web App
+  participant GW as API Gateway
+  participant API as {Backend Service}
+  participant DB as {Database}
 
-actor "{ROLE_1}" as User
-participant "Web App" as Web
-participant "API Gateway" as GW
-participant "{Backend Service}" as API
-database "{Database}" as DB
-
-User -> Web : {操作描述，例：填寫表單並送出}
-activate Web
-
-Web -> GW : POST /api/v1/{resource}\n{請求資料摘要}
-activate GW
-
-GW -> GW : 驗證 JWT Token
-GW -> API : 轉送請求
-activate API
-
-API -> API : {業務邏輯驗證}
-API -> DB : INSERT / UPDATE {資料操作}
-activate DB
-DB --> API : 回傳結果
-deactivate DB
-
-API --> GW : 200 OK {回應資料}
-deactivate API
-GW --> Web : 200 OK
-deactivate GW
-
-Web --> User : 顯示成功訊息
-deactivate Web
-
-@enduml
+  User->>Web: {操作描述，例：填寫表單並送出}
+  activate Web
+  Web->>GW: POST /api/v1/{resource}
+  activate GW
+  GW->>GW: 驗證 JWT Token
+  GW->>API: 轉送請求
+  activate API
+  API->>API: {業務邏輯驗證}
+  API->>DB: INSERT / UPDATE {資料操作}
+  activate DB
+  DB-->>API: 回傳結果
+  deactivate DB
+  API-->>GW: 200 OK {回應資料}
+  deactivate API
+  GW-->>Web: 200 OK
+  deactivate GW
+  Web-->>User: 顯示成功訊息
+  deactivate Web
 ```
 
 > 圖 6-1：{流程名稱} 循序圖
@@ -256,15 +239,27 @@ Web -> API : {API 呼叫}
 activate API
 
 API -> Ext : {外部呼叫}
-activate Ext
-Ext --> API : {回應}
-deactivate Ext
+### 6.2 {核心流程二}（對應 FR-{MODULE}-{N}）
 
-API --> Web : {回應}
-deactivate API
-Web --> User : {呈現結果}
+**流程說明：** {簡述此流程的業務目的}
 
-@enduml
+```mermaid
+sequenceDiagram
+  actor User as {ROLE}
+  participant Web as Web App
+  participant API as {Backend Service}
+  participant Ext as {External System}
+
+  User->>Web: {操作}
+  Web->>API: {API 呼叫}
+  activate API
+  API->>Ext: {外部呼叫}
+  activate Ext
+  Ext-->>API: {回應}
+  deactivate Ext
+  API-->>Web: {回應}
+  deactivate API
+  Web-->>User: {呈現結果}
 ```
 
 > 圖 6-2：{流程名稱} 循序圖

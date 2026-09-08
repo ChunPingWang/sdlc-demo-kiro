@@ -144,45 +144,41 @@
 ## 4. C4 L3 — Component Diagram（元件圖）
 
 > 本節針對各主要 Container，說明其內部元件組成與互動，對應 FSD C4 L2 的進一步拆解。  
-> 使用 PlantUML（C4-PlantUML）繪製，來源檔存放於 `sdlc/sd/output/assets/`。
+> 使用 **Mermaid** 繪製，可直接在 GitHub / GitLab 預覽，無需額外工具。
 
 ### 4.1 {Backend Service} 元件圖
 
 **Container 職責：** {此 Container 的核心業務職責}
 
-```plantuml
-@startuml C4_L3_{PROJECT_CODE}_backend
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+```mermaid
+C4Component
+  title Component Diagram — {Backend Service}
 
-title Component Diagram — {Backend Service}
-
-Container_Boundary(backend, "{Backend Service}") {
+  Container_Boundary(backend, "{Backend Service}") {
     Component(api_controller, "{Resource}Controller", "{框架} Controller", "處理 HTTP 請求，參數驗證，回應格式化")
     Component(business_service, "{Business}Service", "Service Layer", "核心業務邏輯，交易管理")
     Component(domain_model, "{Domain}Model", "Domain Object", "業務規則封裝")
     Component(repository, "{Resource}Repository", "Repository Layer", "資料存取抽象層")
     Component(event_publisher, "EventPublisher", "Message Component", "發布領域事件至 Message Queue")
     Component(ext_client, "{ExternalSystem}Client", "HTTP Client", "呼叫外部系統 API")
-}
+  }
 
-Container(web_app, "Web Application", "{框架}", "")
-ContainerDb(db, "{Database}", "{DB}", "")
-ContainerDb(cache, "Cache", "Redis", "")
-Container(mq, "Message Queue", "{MQ}", "")
-System_Ext(ext_system, "{External System}", "")
+  Container(web_app, "Web Application", "{框架}", "")
+  ContainerDb(db, "{Database}", "{DB}", "")
+  ContainerDb(cache, "Cache", "Redis", "")
+  Container(mq, "Message Queue", "{MQ}", "")
+  System_Ext(ext_system, "{External System}", "")
 
-Rel(web_app, api_controller, "HTTP Request", "REST/JSON")
-Rel(api_controller, business_service, "呼叫業務邏輯")
-Rel(business_service, domain_model, "使用")
-Rel(business_service, repository, "資料存取")
-Rel(business_service, event_publisher, "發布事件")
-Rel(business_service, ext_client, "呼叫外部服務")
-Rel(repository, db, "讀寫", "JDBC/ORM")
-Rel(repository, cache, "快取存取", "Redis Protocol")
-Rel(event_publisher, mq, "發布訊息", "AMQP/Kafka")
-Rel(ext_client, ext_system, "API 呼叫", "HTTPS/REST")
-
-@enduml
+  Rel(web_app, api_controller, "HTTP Request", "REST/JSON")
+  Rel(api_controller, business_service, "呼叫業務邏輯")
+  Rel(business_service, domain_model, "使用")
+  Rel(business_service, repository, "資料存取")
+  Rel(business_service, event_publisher, "發布事件")
+  Rel(business_service, ext_client, "呼叫外部服務")
+  Rel(repository, db, "讀寫", "JDBC/ORM")
+  Rel(repository, cache, "快取存取", "Redis Protocol")
+  Rel(event_publisher, mq, "發布訊息", "AMQP/Kafka")
+  Rel(ext_client, ext_system, "API 呼叫", "HTTPS/REST")
 ```
 
 > 圖 4-1：{Backend Service} 元件圖（C4 L3）
@@ -203,28 +199,27 @@ Rel(ext_client, ext_system, "API 呼叫", "HTTPS/REST")
 ### 4.2 {Worker Service} 元件圖
 
 ```plantuml
-@startuml C4_L3_{PROJECT_CODE}_worker
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+### 4.2 {Worker Service} 元件圖
 
-title Component Diagram — {Worker Service}
+```mermaid
+C4Component
+  title Component Diagram — {Worker Service}
 
-Container_Boundary(worker, "{Worker Service}") {
+  Container_Boundary(worker, "{Worker Service}") {
     Component(consumer, "{Event}Consumer", "Message Consumer", "訂閱並消費 Message Queue 事件")
     Component(handler, "{Event}Handler", "Event Handler", "事件處理邏輯")
     Component(retry, "RetryPolicy", "Retry Component", "失敗重試與死信佇列處理")
     Component(notifier, "{Notification}Sender", "Notification", "發送通知（Email / SMS / Push）")
-}
+  }
 
-Container(mq, "Message Queue", "{MQ}", "")
-System_Ext(notification_ext, "{Notification Service}", "第三方通知服務")
+  Container(mq, "Message Queue", "{MQ}", "")
+  System_Ext(notification_ext, "{Notification Service}", "第三方通知服務")
 
-Rel(mq, consumer, "消費訊息", "AMQP/Kafka")
-Rel(consumer, handler, "委派處理")
-Rel(handler, retry, "失敗時")
-Rel(handler, notifier, "觸發通知")
-Rel(notifier, notification_ext, "發送通知", "HTTPS")
-
-@enduml
+  Rel(mq, consumer, "消費訊息", "AMQP/Kafka")
+  Rel(consumer, handler, "委派處理")
+  Rel(handler, retry, "失敗時")
+  Rel(handler, notifier, "觸發通知")
+  Rel(notifier, notification_ext, "發送通知", "HTTPS")
 ```
 
 > 圖 4-2：{Worker Service} 元件圖（C4 L3）
@@ -234,61 +229,49 @@ Rel(notifier, notification_ext, "發送通知", "HTTPS")
 ## 5. 技術層循序圖
 
 > 本節描述服務間的技術互動時序，聚焦於跨 Container 的呼叫鏈、非同步流程與外部整合，對應 FSD 業務循序圖的技術實作面。  
-> 使用 PlantUML 繪製，來源檔存放於 `sdlc/sd/output/assets/`。
+> 使用 **Mermaid** 繪製，可直接在 GitHub / GitLab 預覽。
 
 ### 5.1 {核心技術流程一}（對應 FSD 圖 6-1）
 
 **流程說明：** {說明此技術流程涵蓋的服務邊界與關鍵技術決策}
 
-```plantuml
-@startuml SEQ_TECH_{PROJECT_CODE}_01
-title {技術流程名稱}（同步）
+```mermaid
+sequenceDiagram
+  participant Web as Web App ({框架})
+  participant GW as API Gateway ({工具})
+  participant Ctrl as {Resource}Controller
+  participant Svc as {Business}Service
+  participant Repo as {Resource}Repository
+  participant DB as {Database}
+  participant Cache as Redis Cache
 
-participant "Web App\n({框架})" as Web
-participant "API Gateway\n({工具})" as GW
-participant "{Resource}Controller" as Ctrl
-participant "{Business}Service" as Svc
-participant "{Resource}Repository" as Repo
-database "{Database}" as DB
-database "Redis Cache" as Cache
-
-Web -> GW : POST /api/v1/{resource}\nAuthorization: Bearer {JWT}
-activate GW
-
-GW -> GW : 驗證 JWT 簽章\n解析 Claims（userId, roles）
-GW -> Ctrl : 轉送請求 + X-User-Id Header
-activate Ctrl
-
-Ctrl -> Ctrl : @Valid 輸入驗證\nDTO → 驗證失敗拋 ConstraintViolationException
-Ctrl -> Svc : create{Resource}(requestDto, userId)
-activate Svc
-
-Svc -> Cache : GET cache:{resource}:{key}
-activate Cache
-Cache --> Svc : null（Cache Miss）
-deactivate Cache
-
-Svc -> Svc : 業務規則驗證\n（唯一性、狀態機、權限檢查）
-Svc -> Repo : save({Entity})
-activate Repo
-Repo -> DB : BEGIN TRANSACTION\nINSERT INTO {table} ...
-activate DB
-DB --> Repo : {entity_id}
-Repo -> DB : COMMIT
-deactivate DB
-Repo --> Svc : {savedEntity}
-deactivate Repo
-
-Svc -> Cache : SET cache:{resource}:{key} TTL={N}s
-Svc --> Ctrl : {responseDto}
-deactivate Svc
-
-Ctrl --> GW : 201 Created\n{response body}
-deactivate Ctrl
-GW --> Web : 201 Created
-deactivate GW
-
-@enduml
+  Web->>GW: POST /api/v1/{resource}<br/>Authorization: Bearer {JWT}
+  activate GW
+  GW->>GW: 驗證 JWT 簽章，解析 Claims
+  GW->>Ctrl: 轉送請求 + X-User-Id Header
+  activate Ctrl
+  Ctrl->>Ctrl: @Valid 輸入驗證
+  Ctrl->>Svc: create{Resource}(requestDto, userId)
+  activate Svc
+  Svc->>Cache: GET cache:{resource}:{key}
+  Cache-->>Svc: null（Cache Miss）
+  Svc->>Svc: 業務規則驗證
+  Svc->>Repo: save({Entity})
+  activate Repo
+  Repo->>DB: BEGIN TRANSACTION / INSERT
+  activate DB
+  DB-->>Repo: {entity_id}
+  Repo->>DB: COMMIT
+  deactivate DB
+  Repo-->>Svc: {savedEntity}
+  deactivate Repo
+  Svc->>Cache: SET cache:{resource}:{key} TTL={N}s
+  Svc-->>Ctrl: {responseDto}
+  deactivate Svc
+  Ctrl-->>GW: 201 Created
+  deactivate Ctrl
+  GW-->>Web: 201 Created
+  deactivate GW
 ```
 
 > 圖 5-1：{技術流程名稱}（同步呼叫鏈）
@@ -336,31 +319,47 @@ Pub -> MQ : 發布訊息（At-Least-Once）
 deactivate Pub
 
 MQ -> Consumer : 推送訊息（Consumer Group）
-activate Consumer
-Consumer -> Handler : handle({DomainEvent})
-activate Handler
+### 5.2 {非同步流程}（對應 FSD 圖 6-2）
 
-Handler -> Handler : 冪等性檢查\n（已處理過的 eventId 跳過）
+**流程說明：** {說明此非同步流程的觸發時機、訊息契約與最終一致性設計}
 
-alt 處理成功
-    Handler -> Notifier : sendNotification(payload)
+```mermaid
+sequenceDiagram
+  participant Svc as {Business}Service
+  participant Pub as EventPublisher
+  participant MQ as {Topic/Queue Name} ({MQ})
+  participant Consumer as {Event}Consumer (Worker)
+  participant Handler as {Event}Handler
+  participant Notifier as {Notification}Sender
+  participant ExtSvc as External Notification Service
+
+  Svc->>Pub: publish({DomainEvent})
+  activate Pub
+  Note over Pub: eventId, eventType,<br/>aggregateId, payload, timestamp
+  Pub->>MQ: 發布訊息 (At-Least-Once)
+  deactivate Pub
+
+  MQ->>Consumer: 推送訊息 (Consumer Group)
+  activate Consumer
+  Consumer->>Handler: handle({DomainEvent})
+  activate Handler
+  Handler->>Handler: 冪等性檢查 (eventId 去重)
+
+  alt 處理成功
+    Handler->>Notifier: sendNotification(payload)
     activate Notifier
-    Notifier -> ExtSvc : POST /send\n{通知內容}
-    ExtSvc --> Notifier : 200 OK
+    Notifier->>ExtSvc: POST /send {通知內容}
+    ExtSvc-->>Notifier: 200 OK
     deactivate Notifier
-    Handler -> MQ : ACK（確認消費）
-else 處理失敗（可重試）
-    Handler -> MQ : NACK（重新入隊）
-    note right : 最多重試 {N} 次
-else 超過重試上限
-    Handler -> MQ : 移至 Dead Letter Queue
-    note right : 人工介入或告警
-end
+    Handler->>MQ: ACK（確認消費）
+  else 處理失敗（可重試）
+    Handler->>MQ: NACK（重新入隊，最多 {N} 次）
+  else 超過重試上限
+    Handler->>MQ: 移至 Dead Letter Queue
+  end
 
-deactivate Handler
-deactivate Consumer
-
-@enduml
+  deactivate Handler
+  deactivate Consumer
 ```
 
 > 圖 5-2：{非同步流程名稱}（Event-Driven）

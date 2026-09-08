@@ -93,7 +93,8 @@ metadata:
 ### Step 1-4：輸出 SD 文件
 
 存至：`sdlc/sd/output/SD-{PROJECT_CODE}-v{VERSION}.md`  
-架構圖來源檔（PlantUML）存至：`sdlc/sd/output/assets/`
+**圖形格式**：C4 L3 元件圖與技術循序圖一律使用 **Mermaid** 程式碼區塊（` ```mermaid `），  
+可直接在 GitHub / GitLab 預覽，無需安裝 PlantUML 或其他工具。
 
 ---
 
@@ -331,8 +332,7 @@ metadata:
 
 | 產出物 | 路徑 | 說明 |
 |-------|------|------|
-| SD 文件 | `sdlc/sd/output/SD-{PROJECT_CODE}-v{VERSION}.md` | Phase 1 產出 |
-| PlantUML 來源 | `sdlc/sd/output/assets/*.puml` | C4 L3 + 技術循序圖 |
+| SD 文件 | `sdlc/sd/output/SD-{PROJECT_CODE}-v{VERSION}.md` | Phase 1 產出，圖形使用 Mermaid |
 | Task List | `sdlc/sd/output/TASK-LIST-{PROJECT_CODE}-v{VERSION}.md` | Phase 2 產出，HITL-2 確認用 |
 
 ---

@@ -66,7 +66,9 @@ metadata:
    ```
    sdlc/fsd/output/FSD-{PROJECT_CODE}-v{VERSION}.md
    ```
-2. 在回應中告知使用者：
+2. **圖形格式**：C4 L1/L2 架構圖與業務循序圖一律使用 **Mermaid** 程式碼區塊（` ```mermaid `），  
+   可直接在 GitHub / GitLab / Obsidian / VS Code 預覽，無需安裝額外工具。
+3. 在回應中告知使用者：
    - 已識別的模組清單
    - 功能項目總數
    - 標注為「待確認」的問題列表
@@ -95,6 +97,7 @@ Word 樣式規範請參考 `references/FSD-word-style-guide.md`。
 - [ ] 所有功能項目均有唯一的 FR 編號
 - [ ] 每個 FR 均有明確的驗收標準
 - [ ] 非功能需求（效能、安全、可用性）章節已填寫
+- [ ] C4 L1/L2 架構圖與循序圖使用 **Mermaid** 格式（` ```mermaid `）
 - [ ] 無殘留的 `{PLACEHOLDER}` 佔位符（「待確認」除外）
 - [ ] 審查與核准表格已列出相關人員欄位
 
