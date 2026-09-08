@@ -15,9 +15,11 @@ public interface RateTableVersionRepository extends JpaRepository<RateTableVersi
 
     boolean existsByProductCodeAndEffectiveDate(String productCode, LocalDate effectiveDate);
 
+    Optional<RateTableVersion> findTopByProductCodeAndStatusOrderByEffectiveDateDesc(
+            String productCode, RateTableVersion.VersionStatus status);
+
     Page<RateTableVersion> findByProductCodeOrderByEffectiveDateDesc(
             String productCode, Pageable pageable);
 
-    Optional<RateTableVersion> findTopByProductCodeAndStatusOrderByEffectiveDateDesc(
-            String productCode, RateTableVersion.VersionStatus status);
+    int countByProductCode(String productCode);
 }

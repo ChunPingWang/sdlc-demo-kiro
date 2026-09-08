@@ -1,15 +1,18 @@
 package com.example.lifepremium.service;
 
-import com.example.lifepremium.dto.request.RateTableUploadRequest;
 import com.example.lifepremium.dto.response.PageResponse;
-import com.example.lifepremium.dto.response.RateTableUploadResponse;
+import com.example.lifepremium.dto.response.RateTableVersionResponse;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 public interface RateTableService {
 
-    RateTableUploadResponse upload(RateTableUploadRequest request, UUID adminId);
+    RateTableVersionResponse upload(
+            MultipartFile file, String productCode,
+            LocalDate effectiveDate, UUID adminId);
 
-    PageResponse<RateTableUploadResponse> listVersions(String productCode, Pageable pageable);
+    PageResponse<RateTableVersionResponse> listVersions(String productCode, Pageable pageable);
 }

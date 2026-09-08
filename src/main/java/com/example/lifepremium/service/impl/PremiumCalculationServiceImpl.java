@@ -14,87 +14,77 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.math.RoundingMode;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * 保費試算核心邏輯（BR-001 ~ BR-005）
- *
- * 計算公式（BR-004, BR-005）：
- *   annualPremium  = ROUND(insuredAmount / 1000.0 × rate)
- *   monthlyPremium = ROUND(annualPremium / 12.0 × 1.03)
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class PremiumCalculationServiceImpl implements PremiumCalculationService {
 
     private static final int    MIN_AGE    = 0;
     private static final int    MAX_AGE    = 70;
-    private static final int    MIN_AMOUNT = 100;   // 萬元
-    private static final int    MAX_AMOUNT = 5000;  // 萬元
+    private static final int    MIN_AMOUNT = 100;
+    private static final int    MAX_AMOUNT = 5000;
     private static final Set<Integer> VALID_PERIODS = Set.of(10, 20, 30, 99);
-    private static final double MONTHLY_LOADING    = 1.03;
+    private static final BigDecimal MONTHLY_FACTOR = new BigDecimal("1.03");
 
     private final RateEntryRepository       rateEntryRepository;
-    private final CalculationRecordRepository calculationRecordRepository;
+    private final CalculationRecordRepository recordRepository;
 
     @Override
     @Transactional
-    public PremiumCalculateResponse calculate(PremiumCalculateRequest request, UUID agentId) {
-        log.info("保費試算開始: productCode={}, age={}, gender={}, amount={}, period={}, agentId={}",
-                request.productCode(), request.age(), request.gender(),
-                request.insuredAmount(), request.paymentPeriod(), agentId);
+    public PremiumCalculateResponse calculate(PremiumCalculateRequest req, UUID agentId) {
+        log.info("試算開始: productCode={}, age={}, gender={}, amount={}, period={}, agentId={}",
+                req.productCode(), req.age(), req.gender(),
+                req.insuredAmount(), req.paymentPeriod(), agentId);
 
-        // ── BR-001：年齡驗證 ──
-        if (request.age() < MIN_AGE || request.age() > MAX_AGE) {
-            throw new AgeOutOfRangeException(request.age());
+        // ── 業務規則驗證（BR-001 ~ BR-003）──
+        if (req.age() < MIN_AGE || req.age() > MAX_AGE) {
+            throw new AgeOutOfRangeException(req.age());
+        }
+        if (req.insuredAmount() < MIN_AMOUNT || req.insuredAmount() > MAX_AMOUNT) {
+            throw new AmountOutOfRangeException(req.insuredAmount());
+        }
+        if (!VALID_PERIODS.contains(req.paymentPeriod())) {
+            throw new InvalidPaymentPeriodException(req.paymentPeriod());
         }
 
-        // ── BR-002：保額驗證 ──
-        if (request.insuredAmount() < MIN_AMOUNT || request.insuredAmount() > MAX_AMOUNT) {
-            throw new AmountOutOfRangeException(request.insuredAmount());
-        }
+        // ── 費率查詢（Cache-Aside 由 RateQueryService/Cache 層處理）──
+        BigDecimal rate = lookupRate(req.productCode(), req.age(), req.gender(), req.paymentPeriod());
 
-        // ── BR-003：繳費年期驗證 ──
-        if (!VALID_PERIODS.contains(request.paymentPeriod())) {
-            throw new InvalidPaymentPeriodException(request.paymentPeriod());
-        }
+        // ── 保費計算（BR-004 / BR-005）──
+        // annualPremium  = ROUND(insuredAmount / 1000 × rate)
+        // monthlyPremium = ROUND(annualPremium / 12 × 1.03)
+        int annualPremium = BigDecimal.valueOf(req.insuredAmount())
+                .divide(BigDecimal.valueOf(1000), 10, RoundingMode.HALF_UP)
+                .multiply(rate)
+                .setScale(0, RoundingMode.HALF_UP)
+                .intValue();
 
-        // ── 費率查詢（Cache-Aside，見 RateQueryService）──
-        BigDecimal rate = findRate(
-                request.productCode(), request.age(),
-                request.gender(),      request.paymentPeriod());
+        int monthlyPremium = BigDecimal.valueOf(annualPremium)
+                .divide(BigDecimal.valueOf(12), 10, RoundingMode.HALF_UP)
+                .multiply(MONTHLY_FACTOR)
+                .setScale(0, RoundingMode.HALF_UP)
+                .intValue();
 
-        // ── BR-004：年繳保費 = ROUND(保額 / 1000 × 費率) ──
-        int annualPremium = Math.round(
-                (float) (request.insuredAmount() / 1000.0 * rate.doubleValue()));
+        // ── 試算紀錄（業務員才保存）──
+        CalculationRecord record = CalculationRecord.success(
+                agentId, req.productCode(),
+                req.age(), req.gender(), req.insuredAmount(), req.paymentPeriod(),
+                rate, annualPremium, monthlyPremium);
 
-        // ── BR-005：月繳保費 = ROUND(年繳 / 12 × 1.03) ──
-        int monthlyPremium = Math.round(
-                (float) (annualPremium / 12.0 * MONTHLY_LOADING));
-
-        // ── 保存試算紀錄（業務員才保存，訪客 agentId=null 不保存）──
-        UUID calculationId = null;
         if (agentId != null) {
-            CalculationRecord record = CalculationRecord.success(
-                    agentId, request.productCode(),
-                    request.age(), request.gender(),
-                    request.insuredAmount(), request.paymentPeriod(),
-                    rate, annualPremium, monthlyPremium);
-            calculationId = calculationRecordRepository.save(record).getId();
+            recordRepository.save(record);
+            log.info("試算紀錄已保存: calculationId={}, annualPremium={}", record.getId(), annualPremium);
         }
-
-        log.info("保費試算完成: annualPremium={}, monthlyPremium={}, id={}",
-                annualPremium, monthlyPremium, calculationId);
 
         return new PremiumCalculateResponse(
-                calculationId,
-                request.productCode(),
-                request.insuredAmount(),
-                request.paymentPeriod(),
+                record.getId(),
+                req.productCode(),
+                req.insuredAmount(),
+                req.paymentPeriod(),
                 rate,
                 annualPremium,
                 monthlyPremium
@@ -102,17 +92,14 @@ public class PremiumCalculationServiceImpl implements PremiumCalculationService 
     }
 
     /**
-     * Cache-Aside 費率查詢
-     * Key: rate:{productCode}:{age}:{gender}:{paymentPeriod}
+     * 費率查詢（先走 Spring Cache / Redis，Cache Miss 再查 DB）。
+     * Cache key: rate::{productCode}::{age}::{gender}::{paymentPeriod}
      */
-    @Cacheable(
-        value  = "rates",
-        key    = "#productCode + ':' + #age + ':' + #gender + ':' + #paymentPeriod",
-        unless = "#result == null"
-    )
-    public BigDecimal findRate(String productCode, int age, String gender, int paymentPeriod) {
+    @Cacheable(value = "rates",
+               key = "#productCode + ':' + #age + ':' + #gender + ':' + #paymentPeriod")
+    public BigDecimal lookupRate(String productCode, int age, String gender, int paymentPeriod) {
         return rateEntryRepository
-                .findEffectiveRate(productCode, age, gender, paymentPeriod, LocalDate.now())
+                .findEffectiveRate(productCode, age, gender, paymentPeriod)
                 .orElseThrow(() -> new RateNotFoundException(productCode, age, gender, paymentPeriod));
     }
 }

@@ -14,30 +14,31 @@ import java.util.UUID;
 @Repository
 public interface CalculationRecordRepository extends JpaRepository<CalculationRecord, UUID> {
 
-    /** 業務員查詢自己的紀錄（FR-RECORD-001：Agent 只看自己）*/
+    /** 業務員查詢自己的試算紀錄（含日期篩選）。 */
     @Query("""
         SELECT r FROM CalculationRecord r
         WHERE r.agentId = :agentId
           AND r.createdAt BETWEEN :from AND :to
         ORDER BY r.createdAt DESC
         """)
-    Page<CalculationRecord> findByAgentId(
+    Page<CalculationRecord> findByAgentIdAndDateRange(
             @Param("agentId") UUID agentId,
             @Param("from")    Instant from,
             @Param("to")      Instant to,
-            Pageable pageable);
+            Pageable pageable
+    );
 
-    /** 管理員查詢全部紀錄 */
+    /** 管理員查詢全量試算紀錄（含日期篩選）。 */
     @Query("""
         SELECT r FROM CalculationRecord r
         WHERE r.createdAt BETWEEN :from AND :to
         ORDER BY r.createdAt DESC
         """)
-    Page<CalculationRecord> findAll(
+    Page<CalculationRecord> findAllByDateRange(
             @Param("from") Instant from,
             @Param("to")   Instant to,
-            Pageable pageable);
+            Pageable pageable
+    );
 
-    /** 確認訪客（agentId=null）試算後無紀錄 — 用於測試 */
-    long countByAgentIdIsNull();
+    long countByAgentId(UUID agentId);
 }
