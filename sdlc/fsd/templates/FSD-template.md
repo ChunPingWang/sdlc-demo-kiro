@@ -225,24 +225,6 @@ sequenceDiagram
 
 **流程說明：** {簡述此流程的業務目的}
 
-```plantuml
-@startuml SEQ_{PROJECT_CODE}_02
-title {流程名稱}
-
-actor "{ROLE}" as User
-participant "Web App" as Web
-participant "{Backend Service}" as API
-participant "{External System}" as Ext
-
-User -> Web : {操作}
-Web -> API : {API 呼叫}
-activate API
-
-API -> Ext : {外部呼叫}
-### 6.2 {核心流程二}（對應 FR-{MODULE}-{N}）
-
-**流程說明：** {簡述此流程的業務目的}
-
 ```mermaid
 sequenceDiagram
   actor User as {ROLE}

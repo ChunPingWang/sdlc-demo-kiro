@@ -1,4 +1,3 @@
-# 系統設計文件 (System Design Document)
 
 **文件編號：** SD-{PROJECT_CODE}-{VERSION}  
 **專案名稱：** {PROJECT_NAME}  
@@ -64,7 +63,41 @@
 - **部署模式：** {On-Premise / Cloud-Native / Hybrid}
 - **雲端平台：** {AWS / Azure / GCP / N/A}
 
-### 3.2 高階架構圖
+### 3.2 技術標準宣告
+
+> 本節定義專案層級的技術決策，作為 `java-coding-standards` Steering 規範的**專案具體化**，  
+> 並作為 `springboot-codegen` Skill 產生程式碼時的強制輸入來源。  
+> **所有欄位必須在開發啟動前填寫完畢，禁止留空或使用佔位符。**
+
+#### Package Root（必填）
+
+| 欄位 | 值 | 說明 |
+|------|----|------|
+| Group ID | `{com.{company}}` | Maven/Gradle groupId，對應公司/組織 |
+| Artifact ID | `{project-code}` | Maven/Gradle artifactId，小寫連字號 |
+| **Package Root** | `{com.{company}.{projectCode}}` | **Java 根 package，全小寫無連字號** |
+
+**範例：**
+
+| 專案 | Group ID | Artifact ID | Package Root |
+|------|----------|-------------|-------------|
+| 壽險保費試算 | `com.example` | `life-premium` | `com.example.lifepremium` |
+| 電商平台 | `com.acme` | `ecommerce` | `com.acme.ecommerce` |
+| HR Portal | `com.mybank` | `hr-portal` | `com.mybank.hrportal` |
+
+#### 技術棧版本（必填）
+
+| 技術 | 版本 | 備註 |
+|------|------|------|
+| Java | {17 / 21} | 選擇 LTS 版本 |
+| Spring Boot | {3.x.x} | |
+| 資料庫 | {PostgreSQL {version} / MySQL {version}} | |
+| ORM | Spring Data JPA + Hibernate 6 | 企業標準 |
+| DTO 映射 | MapStruct {version} | 編譯期生成 |
+| 測試框架 | JUnit 5 + Mockito + Cucumber {version} | |
+| Build Tool | {Maven / Gradle} | |
+
+### 3.3 高階架構圖
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -93,13 +126,14 @@
 └─────────────────────────────────────────┘
 ```
 
-> 請以實際架構圖（如 draw.io、Miro、PlantUML）取代上方 ASCII 示意圖，並嵌入或附件於本文件。
+> 請以實際架構圖取代上方 ASCII 示意圖。優先使用 **Mermaid**（可直接在 GitHub / GitLab 預覽）；  
+> 如需更精細的排版，可另用 draw.io / Miro 繪製後以圖片附件嵌入。
 
-### 3.3 關鍵架構決策（ADR 索引）
+### 3.4 關鍵架構決策（ADR 索引）
 
-> 本節僅為**索引**。每一筆架構決策的完整背景、替代方案與影響，記錄於獨立的 ADR 檔
-> （`sdlc/adr/output/ADR-NNNN-*.md`），使用 `sdlc/adr/templates/ADR-template.md` 格式。
-> ADR 由 `generate-sd` 依 FSD 起草為 `Proposed`，架構師於 **HITL-1** 提供決策輸入並審核，
+> 本節僅為**索引**。每一筆架構決策的完整背景、替代方案與影響，記錄於獨立的 ADR 檔  
+> （`sdlc/adr/output/ADR-NNNN-*.md`），使用 `sdlc/adr/templates/ADR-template.md` 格式。  
+> ADR 由 `generate-sd` 依 FSD 起草為 `Proposed`，架構師於 **HITL-1** 提供決策輸入並審核，  
 > 核准後轉為 `Accepted`。**ADR 是輸出 artifact，不是人工手寫的輸入。**
 
 | ADR | 決策摘要 | 選擇 | 狀態 | 詳情 |
@@ -115,45 +149,41 @@
 ## 4. C4 L3 — Component Diagram（元件圖）
 
 > 本節針對各主要 Container，說明其內部元件組成與互動，對應 FSD C4 L2 的進一步拆解。  
-> 使用 PlantUML（C4-PlantUML）繪製，來源檔存放於 `sdlc/sd/output/assets/`。
+> 使用 **Mermaid** 繪製，可直接在 GitHub / GitLab 預覽，無需額外工具。
 
 ### 4.1 {Backend Service} 元件圖
 
 **Container 職責：** {此 Container 的核心業務職責}
 
-```plantuml
-@startuml C4_L3_{PROJECT_CODE}_backend
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+```mermaid
+C4Component
+  title Component Diagram — {Backend Service}
 
-title Component Diagram — {Backend Service}
-
-Container_Boundary(backend, "{Backend Service}") {
+  Container_Boundary(backend, "{Backend Service}") {
     Component(api_controller, "{Resource}Controller", "{框架} Controller", "處理 HTTP 請求，參數驗證，回應格式化")
     Component(business_service, "{Business}Service", "Service Layer", "核心業務邏輯，交易管理")
     Component(domain_model, "{Domain}Model", "Domain Object", "業務規則封裝")
     Component(repository, "{Resource}Repository", "Repository Layer", "資料存取抽象層")
     Component(event_publisher, "EventPublisher", "Message Component", "發布領域事件至 Message Queue")
     Component(ext_client, "{ExternalSystem}Client", "HTTP Client", "呼叫外部系統 API")
-}
+  }
 
-Container(web_app, "Web Application", "{框架}", "")
-ContainerDb(db, "{Database}", "{DB}", "")
-ContainerDb(cache, "Cache", "Redis", "")
-Container(mq, "Message Queue", "{MQ}", "")
-System_Ext(ext_system, "{External System}", "")
+  Container(web_app, "Web Application", "{框架}", "")
+  ContainerDb(db, "{Database}", "{DB}", "")
+  ContainerDb(cache, "Cache", "Redis", "")
+  Container(mq, "Message Queue", "{MQ}", "")
+  System_Ext(ext_system, "{External System}", "")
 
-Rel(web_app, api_controller, "HTTP Request", "REST/JSON")
-Rel(api_controller, business_service, "呼叫業務邏輯")
-Rel(business_service, domain_model, "使用")
-Rel(business_service, repository, "資料存取")
-Rel(business_service, event_publisher, "發布事件")
-Rel(business_service, ext_client, "呼叫外部服務")
-Rel(repository, db, "讀寫", "JDBC/ORM")
-Rel(repository, cache, "快取存取", "Redis Protocol")
-Rel(event_publisher, mq, "發布訊息", "AMQP/Kafka")
-Rel(ext_client, ext_system, "API 呼叫", "HTTPS/REST")
-
-@enduml
+  Rel(web_app, api_controller, "HTTP Request", "REST/JSON")
+  Rel(api_controller, business_service, "呼叫業務邏輯")
+  Rel(business_service, domain_model, "使用")
+  Rel(business_service, repository, "資料存取")
+  Rel(business_service, event_publisher, "發布事件")
+  Rel(business_service, ext_client, "呼叫外部服務")
+  Rel(repository, db, "讀寫", "JDBC/ORM")
+  Rel(repository, cache, "快取存取", "Redis Protocol")
+  Rel(event_publisher, mq, "發布訊息", "AMQP/Kafka")
+  Rel(ext_client, ext_system, "API 呼叫", "HTTPS/REST")
 ```
 
 > 圖 4-1：{Backend Service} 元件圖（C4 L3）
@@ -173,29 +203,25 @@ Rel(ext_client, ext_system, "API 呼叫", "HTTPS/REST")
 
 ### 4.2 {Worker Service} 元件圖
 
-```plantuml
-@startuml C4_L3_{PROJECT_CODE}_worker
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+```mermaid
+C4Component
+  title Component Diagram — {Worker Service}
 
-title Component Diagram — {Worker Service}
-
-Container_Boundary(worker, "{Worker Service}") {
+  Container_Boundary(worker, "{Worker Service}") {
     Component(consumer, "{Event}Consumer", "Message Consumer", "訂閱並消費 Message Queue 事件")
     Component(handler, "{Event}Handler", "Event Handler", "事件處理邏輯")
     Component(retry, "RetryPolicy", "Retry Component", "失敗重試與死信佇列處理")
     Component(notifier, "{Notification}Sender", "Notification", "發送通知（Email / SMS / Push）")
-}
+  }
 
-Container(mq, "Message Queue", "{MQ}", "")
-System_Ext(notification_ext, "{Notification Service}", "第三方通知服務")
+  Container(mq, "Message Queue", "{MQ}", "")
+  System_Ext(notification_ext, "{Notification Service}", "第三方通知服務")
 
-Rel(mq, consumer, "消費訊息", "AMQP/Kafka")
-Rel(consumer, handler, "委派處理")
-Rel(handler, retry, "失敗時")
-Rel(handler, notifier, "觸發通知")
-Rel(notifier, notification_ext, "發送通知", "HTTPS")
-
-@enduml
+  Rel(mq, consumer, "消費訊息", "AMQP/Kafka")
+  Rel(consumer, handler, "委派處理")
+  Rel(handler, retry, "失敗時")
+  Rel(handler, notifier, "觸發通知")
+  Rel(notifier, notification_ext, "發送通知", "HTTPS")
 ```
 
 > 圖 4-2：{Worker Service} 元件圖（C4 L3）
@@ -205,61 +231,49 @@ Rel(notifier, notification_ext, "發送通知", "HTTPS")
 ## 5. 技術層循序圖
 
 > 本節描述服務間的技術互動時序，聚焦於跨 Container 的呼叫鏈、非同步流程與外部整合，對應 FSD 業務循序圖的技術實作面。  
-> 使用 PlantUML 繪製，來源檔存放於 `sdlc/sd/output/assets/`。
+> 使用 **Mermaid** 繪製，可直接在 GitHub / GitLab 預覽。
 
 ### 5.1 {核心技術流程一}（對應 FSD 圖 6-1）
 
 **流程說明：** {說明此技術流程涵蓋的服務邊界與關鍵技術決策}
 
-```plantuml
-@startuml SEQ_TECH_{PROJECT_CODE}_01
-title {技術流程名稱}（同步）
+```mermaid
+sequenceDiagram
+  participant Web as Web App ({框架})
+  participant GW as API Gateway ({工具})
+  participant Ctrl as {Resource}Controller
+  participant Svc as {Business}Service
+  participant Repo as {Resource}Repository
+  participant DB as {Database}
+  participant Cache as Redis Cache
 
-participant "Web App\n({框架})" as Web
-participant "API Gateway\n({工具})" as GW
-participant "{Resource}Controller" as Ctrl
-participant "{Business}Service" as Svc
-participant "{Resource}Repository" as Repo
-database "{Database}" as DB
-database "Redis Cache" as Cache
-
-Web -> GW : POST /api/v1/{resource}\nAuthorization: Bearer {JWT}
-activate GW
-
-GW -> GW : 驗證 JWT 簽章\n解析 Claims（userId, roles）
-GW -> Ctrl : 轉送請求 + X-User-Id Header
-activate Ctrl
-
-Ctrl -> Ctrl : @Valid 輸入驗證\nDTO → 驗證失敗拋 ConstraintViolationException
-Ctrl -> Svc : create{Resource}(requestDto, userId)
-activate Svc
-
-Svc -> Cache : GET cache:{resource}:{key}
-activate Cache
-Cache --> Svc : null（Cache Miss）
-deactivate Cache
-
-Svc -> Svc : 業務規則驗證\n（唯一性、狀態機、權限檢查）
-Svc -> Repo : save({Entity})
-activate Repo
-Repo -> DB : BEGIN TRANSACTION\nINSERT INTO {table} ...
-activate DB
-DB --> Repo : {entity_id}
-Repo -> DB : COMMIT
-deactivate DB
-Repo --> Svc : {savedEntity}
-deactivate Repo
-
-Svc -> Cache : SET cache:{resource}:{key} TTL={N}s
-Svc --> Ctrl : {responseDto}
-deactivate Svc
-
-Ctrl --> GW : 201 Created\n{response body}
-deactivate Ctrl
-GW --> Web : 201 Created
-deactivate GW
-
-@enduml
+  Web->>GW: POST /api/v1/{resource}<br/>Authorization: Bearer {JWT}
+  activate GW
+  GW->>GW: 驗證 JWT 簽章，解析 Claims
+  GW->>Ctrl: 轉送請求 + X-User-Id Header
+  activate Ctrl
+  Ctrl->>Ctrl: @Valid 輸入驗證
+  Ctrl->>Svc: create{Resource}(requestDto, userId)
+  activate Svc
+  Svc->>Cache: GET cache:{resource}:{key}
+  Cache-->>Svc: null（Cache Miss）
+  Svc->>Svc: 業務規則驗證
+  Svc->>Repo: save({Entity})
+  activate Repo
+  Repo->>DB: BEGIN TRANSACTION / INSERT
+  activate DB
+  DB-->>Repo: {entity_id}
+  Repo->>DB: COMMIT
+  deactivate DB
+  Repo-->>Svc: {savedEntity}
+  deactivate Repo
+  Svc->>Cache: SET cache:{resource}:{key} TTL={N}s
+  Svc-->>Ctrl: {responseDto}
+  deactivate Svc
+  Ctrl-->>GW: 201 Created
+  deactivate Ctrl
+  GW-->>Web: 201 Created
+  deactivate GW
 ```
 
 > 圖 5-1：{技術流程名稱}（同步呼叫鏈）
@@ -279,59 +293,43 @@ deactivate GW
 
 **流程說明：** {說明此非同步流程的觸發時機、訊息契約與最終一致性設計}
 
-```plantuml
-@startuml SEQ_TECH_{PROJECT_CODE}_02
-title {非同步流程名稱}（Event-Driven）
+```mermaid
+sequenceDiagram
+  participant Svc as {Business}Service
+  participant Pub as EventPublisher
+  participant MQ as {Topic/Queue Name} ({MQ})
+  participant Consumer as {Event}Consumer (Worker)
+  participant Handler as {Event}Handler
+  participant Notifier as {Notification}Sender
+  participant ExtSvc as External Notification Service
 
-participant "{Business}Service" as Svc
-participant "EventPublisher" as Pub
-queue "{Topic/Queue Name}\n({MQ})" as MQ
-participant "{Event}Consumer\n(Worker)" as Consumer
-participant "{Event}Handler" as Handler
-participant "{Notification}Sender" as Notifier
-System "{External Notification\nService}" as ExtSvc
+  Svc->>Pub: publish({DomainEvent})
+  activate Pub
+  Note over Pub: eventId, eventType,<br/>aggregateId, payload, timestamp
+  Pub->>MQ: 發布訊息 (At-Least-Once)
+  deactivate Pub
 
-Svc -> Pub : publish({DomainEvent})
-activate Pub
-note right of Pub
-  Event Schema:
-  {
-    "eventId": "uuid",
-    "eventType": "{EVENT_TYPE}",
-    "aggregateId": "{id}",
-    "payload": {...},
-    "timestamp": "ISO8601"
-  }
-end note
-Pub -> MQ : 發布訊息（At-Least-Once）
-deactivate Pub
+  MQ->>Consumer: 推送訊息 (Consumer Group)
+  activate Consumer
+  Consumer->>Handler: handle({DomainEvent})
+  activate Handler
+  Handler->>Handler: 冪等性檢查 (eventId 去重)
 
-MQ -> Consumer : 推送訊息（Consumer Group）
-activate Consumer
-Consumer -> Handler : handle({DomainEvent})
-activate Handler
-
-Handler -> Handler : 冪等性檢查\n（已處理過的 eventId 跳過）
-
-alt 處理成功
-    Handler -> Notifier : sendNotification(payload)
+  alt 處理成功
+    Handler->>Notifier: sendNotification(payload)
     activate Notifier
-    Notifier -> ExtSvc : POST /send\n{通知內容}
-    ExtSvc --> Notifier : 200 OK
+    Notifier->>ExtSvc: POST /send {通知內容}
+    ExtSvc-->>Notifier: 200 OK
     deactivate Notifier
-    Handler -> MQ : ACK（確認消費）
-else 處理失敗（可重試）
-    Handler -> MQ : NACK（重新入隊）
-    note right : 最多重試 {N} 次
-else 超過重試上限
-    Handler -> MQ : 移至 Dead Letter Queue
-    note right : 人工介入或告警
-end
+    Handler->>MQ: ACK（確認消費）
+  else 處理失敗（可重試）
+    Handler->>MQ: NACK（重新入隊，最多 {N} 次）
+  else 超過重試上限
+    Handler->>MQ: 移至 Dead Letter Queue
+  end
 
-deactivate Handler
-deactivate Consumer
-
-@enduml
+  deactivate Handler
+  deactivate Consumer
 ```
 
 > 圖 5-2：{非同步流程名稱}（Event-Driven）
@@ -403,7 +401,7 @@ deactivate Consumer
 
 ### 7.2 資料模型（ER 圖說明）
 
-> 請附上 ER 圖（draw.io / dbdiagram.io / PlantUML），以下為文字補充說明。
+> 請附上 ER 圖，優先使用 **Mermaid** `erDiagram`（可直接預覽）；如需更精細排版可用 draw.io / dbdiagram.io 繪製後附圖。以下為文字補充說明。
 
 #### 實體：{ENTITY_NAME}
 
@@ -445,7 +443,7 @@ deactivate Consumer
 - 版本控制採 URL 路徑方式：`/api/v{N}/`
 - 請求 / 回應格式：`application/json`
 - 認證方式：Bearer Token（JWT）
-- 錯誤回應格式統一如 6.3 節定義
+- 錯誤回應格式統一如 8.3 節定義
 
 ### 8.2 API 清單
 
@@ -610,7 +608,7 @@ Developer Push
 | 收集工具 | {ELK Stack / Loki / CloudWatch} |
 | 保留期限 | {N} 天 |
 
-### 9.2 監控指標
+### 11.2 監控指標
 
 | 指標 | 類型 | 警示閾值 |
 |------|------|---------|
@@ -619,16 +617,16 @@ Developer Push
 | CPU 使用率 | Gauge | > {N}% |
 | 記憶體使用率 | Gauge | > {N}% |
 
-### 9.3 分散式追蹤
+### 11.3 分散式追蹤
 
 - 工具：{Jaeger / Zipkin / AWS X-Ray / Datadog}
 - 所有服務間呼叫傳遞 `traceId` 與 `spanId`
 
 ---
 
-## 10. 效能設計
+## 12. 效能設計
 
-### 10.1 效能目標
+### 12.1 效能目標
 
 | 指標 | 目標值 | 量測方法 |
 |------|--------|---------|
@@ -636,21 +634,21 @@ Developer Push
 | 頁面首次內容渲染 | ≤ {N} 秒 | Lighthouse |
 | 最大並發使用者 | {N} | 壓力測試 |
 
-### 10.2 效能策略
+### 12.2 效能策略
 
 | 策略 | 適用場景 | 說明 |
 |------|---------|------|
-| 資料庫索引 | 高頻查詢欄位 | 見 5.2 節索引設計 |
-| Redis 快取 | 熱點資料 / Session | 見 5.3 節快取策略 |
+| 資料庫索引 | 高頻查詢欄位 | 見 7.2 節索引設計 |
+| Redis 快取 | 熱點資料 / Session | 見 7.3 節快取策略 |
 | 分頁查詢 | 清單 API | Cursor-based / Offset-based |
 | 非同步處理 | 耗時操作 | Message Queue + Worker |
 | CDN | 靜態資源 | {CloudFront / Cloudflare} |
 
 ---
 
-## 11. 錯誤處理與回復策略
+## 13. 錯誤處理與回復策略
 
-### 11.1 錯誤分類
+### 13.1 錯誤分類
 
 | 錯誤類型 | 處理方式 | 通知方式 |
 |---------|---------|---------|
@@ -658,7 +656,7 @@ Developer Push
 | 伺服器錯誤（5xx） | 記錄 Error Log + 通知 | PagerDuty / Slack |
 | 外部服務超時 | Retry + Circuit Breaker | 告警 |
 
-### 11.2 Circuit Breaker 設定
+### 13.2 Circuit Breaker 設定
 
 | 服務 | 失敗閾值 | 等待時間 | 半開探測 |
 |------|---------|---------|---------|
@@ -666,7 +664,7 @@ Developer Push
 
 ---
 
-## 12. 技術債與已知限制
+## 14. 技術債與已知限制
 
 | 項目 | 說明 | 風險等級 | 預計處理版本 |
 |------|------|---------|------------|
@@ -674,7 +672,7 @@ Developer Push
 
 ---
 
-## 13. 審查與核准
+## 15. 審查與核准
 
 | 角色 | 姓名 | 簽核日期 | 備註 |
 |------|------|---------|------|

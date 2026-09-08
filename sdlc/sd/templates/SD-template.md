@@ -1,4 +1,3 @@
-# 系統設計文件 (System Design Document)
 
 **文件編號：** SD-{PROJECT_CODE}-{VERSION}  
 **專案名稱：** {PROJECT_NAME}  
@@ -98,7 +97,7 @@
 | 測試框架 | JUnit 5 + Mockito + Cucumber {version} | |
 | Build Tool | {Maven / Gradle} | |
 
-### 3.2 高階架構圖
+### 3.3 高階架構圖
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -127,9 +126,10 @@
 └─────────────────────────────────────────┘
 ```
 
-> 請以實際架構圖（如 draw.io、Miro、PlantUML）取代上方 ASCII 示意圖，並嵌入或附件於本文件。
+> 請以實際架構圖取代上方 ASCII 示意圖。優先使用 **Mermaid**（可直接在 GitHub / GitLab 預覽）；  
+> 如需更精細的排版，可另用 draw.io / Miro 繪製後以圖片附件嵌入。
 
-### 3.3 關鍵架構決策（ADR 索引）
+### 3.4 關鍵架構決策（ADR 索引）
 
 > 本節僅為**索引**。每一筆架構決策的完整背景、替代方案與影響，記錄於獨立的 ADR 檔  
 > （`sdlc/adr/output/ADR-NNNN-*.md`），使用 `sdlc/adr/templates/ADR-template.md` 格式。  
@@ -201,9 +201,6 @@ C4Component
 
 ---
 
-### 4.2 {Worker Service} 元件圖
-
-```plantuml
 ### 4.2 {Worker Service} 元件圖
 
 ```mermaid
@@ -292,38 +289,6 @@ sequenceDiagram
 
 ---
 
-### 5.2 {非同步流程}（對應 FSD 圖 6-2）
-
-**流程說明：** {說明此非同步流程的觸發時機、訊息契約與最終一致性設計}
-
-```plantuml
-@startuml SEQ_TECH_{PROJECT_CODE}_02
-title {非同步流程名稱}（Event-Driven）
-
-participant "{Business}Service" as Svc
-participant "EventPublisher" as Pub
-queue "{Topic/Queue Name}\n({MQ})" as MQ
-participant "{Event}Consumer\n(Worker)" as Consumer
-participant "{Event}Handler" as Handler
-participant "{Notification}Sender" as Notifier
-System "{External Notification\nService}" as ExtSvc
-
-Svc -> Pub : publish({DomainEvent})
-activate Pub
-note right of Pub
-  Event Schema:
-  {
-    "eventId": "uuid",
-    "eventType": "{EVENT_TYPE}",
-    "aggregateId": "{id}",
-    "payload": {...},
-    "timestamp": "ISO8601"
-  }
-end note
-Pub -> MQ : 發布訊息（At-Least-Once）
-deactivate Pub
-
-MQ -> Consumer : 推送訊息（Consumer Group）
 ### 5.2 {非同步流程}（對應 FSD 圖 6-2）
 
 **流程說明：** {說明此非同步流程的觸發時機、訊息契約與最終一致性設計}
@@ -436,7 +401,7 @@ sequenceDiagram
 
 ### 7.2 資料模型（ER 圖說明）
 
-> 請附上 ER 圖（draw.io / dbdiagram.io / PlantUML），以下為文字補充說明。
+> 請附上 ER 圖，優先使用 **Mermaid** `erDiagram`（可直接預覽）；如需更精細排版可用 draw.io / dbdiagram.io 繪製後附圖。以下為文字補充說明。
 
 #### 實體：{ENTITY_NAME}
 
@@ -478,7 +443,7 @@ sequenceDiagram
 - 版本控制採 URL 路徑方式：`/api/v{N}/`
 - 請求 / 回應格式：`application/json`
 - 認證方式：Bearer Token（JWT）
-- 錯誤回應格式統一如 6.3 節定義
+- 錯誤回應格式統一如 8.3 節定義
 
 ### 8.2 API 清單
 
@@ -643,7 +608,7 @@ Developer Push
 | 收集工具 | {ELK Stack / Loki / CloudWatch} |
 | 保留期限 | {N} 天 |
 
-### 9.2 監控指標
+### 11.2 監控指標
 
 | 指標 | 類型 | 警示閾值 |
 |------|------|---------|
@@ -652,16 +617,16 @@ Developer Push
 | CPU 使用率 | Gauge | > {N}% |
 | 記憶體使用率 | Gauge | > {N}% |
 
-### 9.3 分散式追蹤
+### 11.3 分散式追蹤
 
 - 工具：{Jaeger / Zipkin / AWS X-Ray / Datadog}
 - 所有服務間呼叫傳遞 `traceId` 與 `spanId`
 
 ---
 
-## 10. 效能設計
+## 12. 效能設計
 
-### 10.1 效能目標
+### 12.1 效能目標
 
 | 指標 | 目標值 | 量測方法 |
 |------|--------|---------|
@@ -669,21 +634,21 @@ Developer Push
 | 頁面首次內容渲染 | ≤ {N} 秒 | Lighthouse |
 | 最大並發使用者 | {N} | 壓力測試 |
 
-### 10.2 效能策略
+### 12.2 效能策略
 
 | 策略 | 適用場景 | 說明 |
 |------|---------|------|
-| 資料庫索引 | 高頻查詢欄位 | 見 5.2 節索引設計 |
-| Redis 快取 | 熱點資料 / Session | 見 5.3 節快取策略 |
+| 資料庫索引 | 高頻查詢欄位 | 見 7.2 節索引設計 |
+| Redis 快取 | 熱點資料 / Session | 見 7.3 節快取策略 |
 | 分頁查詢 | 清單 API | Cursor-based / Offset-based |
 | 非同步處理 | 耗時操作 | Message Queue + Worker |
 | CDN | 靜態資源 | {CloudFront / Cloudflare} |
 
 ---
 
-## 11. 錯誤處理與回復策略
+## 13. 錯誤處理與回復策略
 
-### 11.1 錯誤分類
+### 13.1 錯誤分類
 
 | 錯誤類型 | 處理方式 | 通知方式 |
 |---------|---------|---------|
@@ -691,7 +656,7 @@ Developer Push
 | 伺服器錯誤（5xx） | 記錄 Error Log + 通知 | PagerDuty / Slack |
 | 外部服務超時 | Retry + Circuit Breaker | 告警 |
 
-### 11.2 Circuit Breaker 設定
+### 13.2 Circuit Breaker 設定
 
 | 服務 | 失敗閾值 | 等待時間 | 半開探測 |
 |------|---------|---------|---------|
@@ -699,7 +664,7 @@ Developer Push
 
 ---
 
-## 12. 技術債與已知限制
+## 14. 技術債與已知限制
 
 | 項目 | 說明 | 風險等級 | 預計處理版本 |
 |------|------|---------|------------|
@@ -707,7 +672,7 @@ Developer Push
 
 ---
 
-## 13. 審查與核准
+## 15. 審查與核准
 
 | 角色 | 姓名 | 簽核日期 | 備註 |
 |------|------|---------|------|
