@@ -8,21 +8,31 @@
 
 ```
 sdlc-demo-kiro/
-├── sdlc/                        # SDLC 文件（需求 → FSD → SD）
+├── sdlc/                        # SDLC 文件（需求 → FSD → SD → Task List → 測試報告）
 │   ├── inputs/                  # 原始需求
 │   ├── fsd/                     # 功能規格文件 + Gherkin
-│   └── sd/                      # 系統設計文件
+│   ├── sd/                      # 系統設計文件 + Task List
+│   └── test/                    # 測試報告模板與輸出
 │
 ├── src/                         # Spring Boot 實作（由 /springboot-codegen 產出）
 │   ├── main/java/com/example/lifepremium/
 │   └── test/java/com/example/lifepremium/
+│                                #   含 architecture/ArchitectureTest.java（ArchUnit）
 │
-├── .kiro/skills/                # Kiro Skills
-│   ├── generate-fsd/            # FSD + Gherkin 產出 Skill
-│   ├── generate-sd/             # SD 文件產出 Skill
-│   └── springboot-codegen/      # TDD/BDD Code Gen Skill
+├── .kiro/
+│   ├── skills/                  # Kiro Skills（7 個）
+│   │   ├── doc-to-markdown/     # ① 前置：文件轉 Markdown（本地）
+│   │   ├── generate-fsd/        # ② FSD + Gherkin 產出
+│   │   ├── generate-sd/         # ③ SD + Task List 產出
+│   │   ├── springboot-codegen/  # ④ TDD/BDD Code Gen
+│   │   ├── test-report/         # ⑤ 彙整測試報告
+│   │   ├── code-review/         # ⑥ ArchUnit + LLM 分層審查
+│   │   └── markdown-to-word/    # ⑦ Word 套版輸出
+│   └── steering/                # 開發標準（每次 session 自動載入）
+│       └── java-coding-standards.md
 │
-└── pom.xml                      # Maven 建置設定
+├── pom.xml                      # Maven 建置設定（含 ArchUnit）
+└── mvnw / mvnw.cmd              # Maven Wrapper
 ```
 
 ---
@@ -62,21 +72,36 @@ sdlc-demo-kiro/
 ### 整體流程圖
 
 ```
+原始文件（PDF/Word/Excel）
+        │  ▼  /doc-to-markdown          本地轉換，不上雲端
 需求文件（inputs/）
         │
-        ▼  Kiro: /generate-fsd
-   FSD 文件 + Gherkin .feature
+        ▼  /generate-fsd
+   FSD 文件 + C4 L1/L2 + Gherkin .feature
         │  ⏸ HITL：確認 FSD 主體
         │  ⏸ HITL：確認 Gherkin 情境
-        ▼  Kiro: /generate-sd
+        ▼  /generate-sd
       SD 文件（C4 L3 + API + 資料表）
-        │  ⏸ HITL：確認 SD 設計
-        ▼  Kiro: /springboot-codegen
-   測試程式（Red）
+        │  ⏸ HITL-1：確認 SD 設計
+      Task List（TASK-LIST-*.md）
+        │  ⏸ HITL-2：架構師確認任務清單
+        ▼  /springboot-codegen         依 Task List 順序驅動
+   測試程式（🔴 Red）
         │  ⏸ HITL：確認測試案例
-        ▼  自動執行
-   實作程式碼（Green）→ 重構建議
+   實作程式碼（🟢 Green）→ REFACTOR-NOTES.md
+        │
+        ▼  /test-report                彙整 surefire/cucumber/jacoco
+   測試報告（sdlc/test/output/）
+        │
+        ▼  /code-review                ArchUnit 結構檢查 + LLM 語意審查
+   Code Review 報告
+        │
+        ▼  /markdown-to-word           套用公司 Word 樣板
+   FSD.docx / SD.docx
 ```
+
+> **Steering 全程生效：** `.kiro/steering/java-coding-standards.md` 於每次 session 自動載入，  
+> 強制 code gen 與 code review 遵守 package 命名、分層職責、注解規範。
 
 ### 產出文件清單
 
@@ -86,6 +111,9 @@ sdlc-demo-kiro/
 | FSD | 功能規格文件 | `sdlc/fsd/output/FSD-LIFE-v1.0.md` |
 | FSD | Gherkin 測試案例 | `sdlc/fsd/output/features/premium-calculation.feature` |
 | SD | 系統設計文件 | `sdlc/sd/output/SD-LIFE-v1.0.md` |
+| SD | 開發 Task List | `sdlc/sd/output/TASK-LIST-LIFE-v1.0.md` |
+| 測試 | 測試報告模板 | `sdlc/test/templates/TEST-REPORT-template.md` |
+| 標準 | Java 開發標準（Steering）| `.kiro/steering/java-coding-standards.md` |
 
 ### 程式碼產出清單
 
@@ -98,6 +126,7 @@ sdlc-demo-kiro/
 | Exception | `AgeOutOfRangeException`, `AmountOutOfRangeException`, `InvalidPaymentPeriodException`, `RateNotFoundException` + `GlobalExceptionHandler` |
 | Test | `PremiumCalculationServiceTest`, `PremiumCalculationControllerTest`, `RateEntryRepositoryTest` |
 | BDD | `PremiumCalculationSteps` + Cucumber Runner |
+| 架構測試 | `architecture/ArchitectureTest.java`（ArchUnit：分層依賴、命名慣例、循環依賴）|
 
 ---
 
@@ -127,9 +156,19 @@ docker-compose up -d
 # BDD 測試（Cucumber）
 ./mvnw test -Dtest="CucumberTestRunner"
 
-# 全部測試
+# 架構測試（ArchUnit）
+./mvnw test -Dtest="ArchitectureTest"
+
+# 全部測試 + 覆蓋率報告
 ./mvnw test
+
+# 全部測試（Windows PowerShell）
+.\mvnw.cmd test
 ```
+
+> **Windows 家目錄含空格的 workaround：** 若家目錄路徑含空格（如 `C:\Users\Rex Wang`），
+> Maven Wrapper 可能無法啟動。改用本機已安裝的 Maven 直接執行，或將 Maven 安裝於無空格路徑後以
+> `mvn -B test` 執行。
 
 ### 啟動應用程式
 
@@ -186,9 +225,13 @@ Session 啟動
     │
     ▼  載入輕量索引（name + description）
    ┌─────────────────────────────────┐
-   │  skill: generate-fsd            │  ← 只讀 description，幾乎無 token 消耗
+   │  skill: doc-to-markdown         │  ← 只讀 description，幾乎無 token 消耗
+   │  skill: generate-fsd            │
    │  skill: generate-sd             │
    │  skill: springboot-codegen      │
+   │  skill: test-report             │
+   │  skill: code-review             │
+   │  skill: markdown-to-word        │
    └─────────────────────────────────┘
     │
     │  使用者輸入匹配或輸入 /skill-name
@@ -229,35 +272,31 @@ Session 啟動
 
 ### SDLC 流程與 Skill 對應
 
-本專案的完整 SDLC 流程由 **5 個 Skills** 協作完成，各自負責不同階段：
+本專案的完整 SDLC 流程由 **7 個 Skills** 協作完成，各自負責不同階段：
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    SDLC 端對端工作流程                                │
 │                                                                     │
 │  原始文件（PDF/Word/Excel）                                           │
-│       │                                                             │
-│       ▼  ① /doc-to-markdown                                        │
-│  sdlc/inputs/*.md  ←─ 本地轉換，不上雲端                             │
-│       │                                                             │
-│       ▼  ② /generate-fsd                                           │
-│  FSD 文件 + C4 L1/L2 + 循序圖                                        │
-│       │  ⏸ HITL Phase 1：確認 FSD 主體                              │
-│  Gherkin .feature 檔                                                │
-│       │  ⏸ HITL Phase 2：確認測試情境                               │
-│       │                                                             │
-│       ▼  ③ /generate-sd                                            │
-│  SD 文件 + C4 L3 + API 規格 + 資料表設計                              │
-│       │  ⏸ HITL：確認設計內容                                        │
-│       │                                                             │
-│       ▼  ④ /springboot-codegen                                     │
-│  測試程式（🔴 Red）                                                   │
-│       │  ⏸ HITL：確認測試案例正確性                                   │
-│  實作程式碼（🟢 Green）← 自動執行，無需確認                             │
-│  REFACTOR-NOTES.md   ← Phase 3 重構建議                             │
-│       │                                                             │
-│       ▼  ⑤ /markdown-to-word                                       │
-│  FSD.docx + SD.docx  ← 套用公司 Word 樣板                           │
+│       ▼  ① /doc-to-markdown        本地轉換，不上雲端                 │
+│  sdlc/inputs/*.md                                                    │
+│       ▼  ② /generate-fsd                                            │
+│  FSD + C4 L1/L2 + Gherkin          ⏸ HITL：FSD 主體 / Gherkin       │
+│       ▼  ③ /generate-sd                                             │
+│  SD + C4 L3 + API + 資料表          ⏸ HITL-1：SD 設計               │
+│  Task List（TASK-LIST-*.md）        ⏸ HITL-2：架構師確認任務         │
+│       ▼  ④ /springboot-codegen     依 Task List 順序驅動            │
+│  測試（🔴 Red）                     ⏸ HITL：測試案例                 │
+│  實作（🟢 Green）+ REFACTOR-NOTES   自動執行                          │
+│       ▼  ⑤ /test-report            彙整 surefire/cucumber/jacoco    │
+│  測試報告（sdlc/test/output/）                                       │
+│       ▼  ⑥ /code-review            ArchUnit 結構 + LLM 語意          │
+│  Code Review 報告                                                    │
+│       ▼  ⑦ /markdown-to-word       套用公司 Word 樣板               │
+│  FSD.docx / SD.docx                                                  │
+│                                                                     │
+│  ▲ Steering: java-coding-standards.md 全程自動載入，強制遵守規範      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -318,7 +357,7 @@ Session 啟動
 
 **觸發：** `/generate-sd`  
 **輸入：** FSD 文件 + 技術架構決策 (ADR)  
-**輸出：** `sdlc/sd/output/SD-{CODE}-v{N}.md`
+**輸出：** `sdlc/sd/output/SD-{CODE}-v{N}.md` + `TASK-LIST-{CODE}-v{N}.md`
 
 以 FSD 為輸入，產出完整系統設計文件，著重技術實作細節：
 
@@ -330,6 +369,16 @@ Session 啟動
 | 資料表設計 | 欄位定義、索引、關聯、快取策略 | 資料需求 |
 | 安全設計 | RBAC 角色矩陣、資料加密、防護措施 | 非功能需求 |
 
+採兩階段 HITL：
+
+| Phase | 產出 | HITL |
+|-------|------|------|
+| Phase 1 | SD 文件本體（C4 L3 + API + 資料表）| ⏸ HITL-1：架構師審查設計 |
+| Phase 2 | 開發 Task List（列出所有待產出類別、方法、決策）| ⏸ HITL-2：確認任務清單再進 code gen |
+
+> **Task List 的意義：** 在大量程式碼產出前，先讓架構師確認 Kiro 的理解正確，  
+> 避免方向錯誤造成的重工與 token 浪費。`springboot-codegen` 依此 Task List 的順序驅動。
+
 ```
 /generate-sd #sdlc/fsd/output/FSD-LIFE-v1.0.md
 ```
@@ -339,10 +388,10 @@ Session 啟動
 ### ④ `springboot-codegen` — TDD/BDD 程式碼產出
 
 **觸發：** `/springboot-codegen`  
-**輸入：** SD 文件（C4 L3 + API + 資料表）+ Gherkin `.feature` 檔  
+**輸入：** Task List（`TASK-LIST-*.md`）+ SD 文件（C4 L3 + API + 資料表）+ Gherkin `.feature` 檔  
 **輸出：** `src/` 下完整 Spring Boot 專案程式碼
 
-遵循 **Red → Green → Refactor** 方法論，分三個 Phase 執行：
+**依 Task List 的先後順序驅動**（HITL-2 確認過的清單），遵循 **Red → Green → Refactor** 方法論，分三個 Phase 執行。過程會**實際執行 Maven 編譯與測試**，直到全數通過：
 
 **Phase 1：產出測試程式（🔴 Red）**
 
@@ -377,7 +426,56 @@ Entity → Repository → DTO → Exception → Service → Controller → Confi
 
 ---
 
-### ⑤ `markdown-to-word` — Word 套版輸出
+### ⑤ `test-report` — 測試報告彙整
+
+**觸發：** `/test-report`  
+**輸入：** `target/surefire-reports/`、`target/cucumber-reports/`、`target/site/jacoco/`  
+**輸出：** `sdlc/test/output/TEST-REPORT-{CODE}-v{N}.md`
+
+執行 Maven/Gradle 測試後，讀取原始報告，套用 `sdlc/test/templates/TEST-REPORT-template.md` 彙整成統一的中文測試報告：
+
+| 來源 | 內容 |
+|------|------|
+| surefire | 單元/整合測試通過率、失敗案例、執行時間 |
+| cucumber | BDD 情境結果（依 `@smoke` / `@regression` 標籤分群）|
+| jacoco | 行/分支覆蓋率，標示未覆蓋的關鍵路徑 |
+| ArchUnit | 架構規則檢查結果（分層依賴、命名、循環依賴）|
+
+報告涵蓋整體摘要、各測試層明細、覆蓋率統計與待改善項目，可直接附於交付文件。
+
+```
+/test-report
+```
+
+---
+
+### ⑥ `code-review` — 架構與資安審查（ArchUnit + LLM 分層）
+
+**觸發：** `/code-review`  
+**輸入：** `src/` 程式碼 + `.kiro/steering/java-coding-standards.md`  
+**輸出：** Code Review 報告（問題分級、修正建議）
+
+採**兩層分工**，把可機械化的規則交給確定性測試，LLM 只審查真正需要判斷的語意問題，**大幅降低 token 消耗**：
+
+| 層次 | 檢查者 | 檢查內容 |
+|------|--------|---------|
+| **Phase 1 結構檢查** | **ArchUnit（確定性測試）** | 分層依賴方向、package 結構、類別/方法命名慣例、注解規範、循環依賴 |
+| **Phase 2 語意審查** | **LLM** | 業務邏輯正確性、資安意圖（授權、注入、機密外洩）、缺漏的輸入驗證、錯誤處理 |
+| **Phase 3 報告** | LLM | 彙整問題分級（Blocker/Major/Minor），發現錯誤時告警並可回饋 code gen 修正 |
+
+> **為何用 ArchUnit 降 token？** 結構規則（如「Controller 不得直接依賴 Repository」）若交給 LLM 審查，  
+> token 消耗隨檔案數線性成長；改寫成 ArchUnit 測試後，這類規則由 JVM 確定性驗證，  
+> LLM 只需聚焦無法機械化的語意判斷。規則範本見 `.kiro/skills/code-review/references/archunit-rules.md`。
+
+對應的架構測試已內建於本專案：`src/test/java/com/example/lifepremium/architecture/ArchitectureTest.java`。
+
+```
+/code-review
+```
+
+---
+
+### ⑦ `markdown-to-word` — Word 套版輸出
 
 **觸發：** `/markdown-to-word`  
 **輸入：** `sdlc/fsd/output/*.md` 或 `sdlc/sd/output/*.md`  
@@ -398,28 +496,33 @@ Entity → Repository → DTO → Exception → Service → Controller → Confi
 
 ### HITL（Human-in-the-Loop）確認點總覽
 
-全流程共有 **4 個 HITL 確認點**，確保關鍵決策有人工把關：
+全流程共有 **5 個 HITL 確認點**，確保關鍵決策有人工把關：
 
 ```
 SDLC 流程                    HITL 確認點              確認重點
 ─────────────────────────────────────────────────────────────────
 /generate-fsd Phase 1   →   ⏸ FSD 主體確認      架構邊界、功能完整性
                         →   ⏸ Gherkin 確認      測試情境覆蓋率、業務規則
-/generate-sd            →   ⏸ SD 設計確認       API 規格、資料表、安全設計
+/generate-sd  Phase 1   →   ⏸ SD 設計確認       API 規格、資料表、安全設計
+              Phase 2   →   ⏸ Task List 確認    任務清單正確性（HITL-2）
 /springboot-codegen     →   ⏸ 測試案例確認      Red 狀態、邊界值、測試資料
 ```
 
-Phase 2 實作程式碼（Green）為**全自動**，無需人工確認，由測試套件自動驗收。
+實作程式碼（Green）為**全自動**，無需人工確認，由測試套件自動驗收。  
+`test-report`、`code-review`、`markdown-to-word` 為產出後的自動化步驟；code-review 若偵測到 Blocker 會告警並可回饋修正。
 
 詳細說明請參閱各 Skill 的 `SKILL.md`：
 
-| Skill | 說明文件 |
-|-------|---------|
-| `doc-to-markdown` | `.kiro/skills/doc-to-markdown/SKILL.md` |
-| `generate-fsd` | `.kiro/skills/generate-fsd/SKILL.md` |
-| `generate-sd` | `.kiro/skills/generate-sd/SKILL.md` |
-| `springboot-codegen` | `.kiro/skills/springboot-codegen/SKILL.md` |
-| `markdown-to-word` | `.kiro/skills/markdown-to-word/SKILL.md` |
+| # | Skill | 說明文件 |
+|---|-------|---------|
+| ① | `doc-to-markdown` | `.kiro/skills/doc-to-markdown/SKILL.md` |
+| ② | `generate-fsd` | `.kiro/skills/generate-fsd/SKILL.md` |
+| ③ | `generate-sd` | `.kiro/skills/generate-sd/SKILL.md` |
+| ④ | `springboot-codegen` | `.kiro/skills/springboot-codegen/SKILL.md` |
+| ⑤ | `test-report` | `.kiro/skills/test-report/SKILL.md` |
+| ⑥ | `code-review` | `.kiro/skills/code-review/SKILL.md`（+ `references/archunit-rules.md`）|
+| ⑦ | `markdown-to-word` | `.kiro/skills/markdown-to-word/SKILL.md` |
+| — | Steering | `.kiro/steering/java-coding-standards.md`（每次 session 自動載入）|
 
 ---
 
@@ -433,8 +536,10 @@ Phase 2 實作程式碼（Green）為**全自動**，無需人工確認，由測
 | 資料庫 | PostgreSQL 15 |
 | 快取 | Redis 7（Cache-Aside，TTL 1hr）|
 | 測試 | JUnit 5 + Mockito + Cucumber 7 |
+| 架構測試 | ArchUnit 1.3（分層依賴、命名、循環依賴確定性檢查）|
+| 覆蓋率 | JaCoCo |
 | 文件 | Springdoc OpenAPI 2 |
-| 建置 | Maven 3.9 |
+| 建置 | Maven 3.9（含 Maven Wrapper）|
 
 ---
 
