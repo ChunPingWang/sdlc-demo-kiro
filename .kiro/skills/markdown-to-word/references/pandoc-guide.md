@@ -38,29 +38,41 @@ pandoc --version
 
 ---
 
-## §2 PlantUML 安裝（架構圖渲染）
+## §2 mermaid-cli 安裝（架構圖渲染）
 
-Pandoc 不直接渲染 PlantUML，需先轉為 PNG。
+本工具鏈的圖形一律使用 **Mermaid**（不使用 PlantUML）。Pandoc 不直接渲染 Mermaid，  
+需先以 **mermaid-cli（`mmdc`）** 將 ` ```mermaid ` 區塊轉為 PNG，再嵌入 Word。`md_to_word.py` 會自動完成此步。
 
-### 前置需求：Java
-
-```bash
-java -version   # 需要 Java 11 以上
-```
-
-### 下載 PlantUML
+### 前置需求：Node.js
 
 ```bash
-# 下載 plantuml.jar
-curl -L https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar \
-     -o tools/plantuml.jar
+node -v   # 需要 Node.js 18 以上
 ```
 
-### 批次轉換 .puml → PNG
+### 安裝 mermaid-cli
 
 ```bash
-java -jar tools/plantuml.jar -png -charset UTF-8 sdlc/*/output/assets/*.puml
+# 全域安裝（提供 mmdc 指令）
+npm install -g @mermaid-js/mermaid-cli
+
+# 或安裝於專案本地（scripts 會自動偵測 node_modules/.bin/mmdc）
+npm install @mermaid-js/mermaid-cli
+
+# 驗證
+mmdc --version
 ```
+
+> 若不安裝，`md_to_word.py` 會退而使用 `npx -y @mermaid-js/mermaid-cli`（首次執行需網路下載）。  
+> 完全離線環境請先全域或本地安裝。
+
+### 手動批次轉換 mermaid → PNG（選用）
+
+```bash
+# 單一檔案：mmdc 讀取 .mmd 產生 PNG（白底、2x 解析度）
+mmdc -i diagram.mmd -o assets/diagram-01.png -b white -s 2
+```
+
+> 一般情況不需手動執行；`md_to_word.py` 會自動擷取 Markdown 中的 mermaid 區塊並渲染。
 
 ---
 
@@ -161,4 +173,4 @@ pandoc "sdlc/sd/output/SD-{CODE}-v{VER}.md" \
 | 程式碼區塊沒有底色 | 套版缺少 Source Code 樣式 | 新增 `Source Code` 段落樣式並設定背景色 |
 | 目錄不更新 | Word 快取 | 開啟 docx 後全選（Ctrl+A）→ F9 更新欄位 |
 | 圖片破圖 | 相對路徑錯誤 | 確認 Pandoc 執行目錄與 Markdown 圖片路徑一致 |
-| PlantUML 顯示為程式碼 | 未預先轉 PNG | 執行 `java -jar plantuml.jar` 先產生 PNG |
+| Mermaid 顯示為程式碼 | 未預先轉 PNG | 確認已安裝 `mmdc`（`npm i -g @mermaid-js/mermaid-cli`），由 `md_to_word.py` 自動渲染 |

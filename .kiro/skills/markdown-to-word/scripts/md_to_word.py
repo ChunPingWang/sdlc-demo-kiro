@@ -5,9 +5,13 @@ SDLC Markdown → Word 套版轉換腳本
 使用 Pandoc 將 FSD/SD Markdown 文件套用公司 Word 模板，產出 .docx。
 
 功能：
-  1. 自動將 Markdown 中的 plantuml 程式碼區塊替換為對應 PNG 圖片引用
+  1. 自動將 Markdown 中的 mermaid 程式碼區塊渲染為 PNG 並替換為圖片引用
+     （使用 mermaid-cli / mmdc，本地端執行，不上雲端）
   2. 呼叫 Pandoc 執行 Markdown → DOCX 轉換（套用 reference-doc 樣式）
   3. 驗證輸出檔案存在
+
+圖形標準：本工具鏈一律使用 Mermaid（不使用 PlantUML）。FSD/SD 產出的
+C4 圖與循序圖皆為 ` ```mermaid ` 區塊，可直接在 GitHub / GitLab 預覽。
 
 使用方式：
   python md_to_word.py --input sdlc/fsd/output/FSD-PROJ-v1.0.md \\
@@ -21,7 +25,6 @@ SDLC Markdown → Word 套版轉換腳本
 
 import argparse
 import logging
-import os
 import re
 import shutil
 import subprocess
@@ -50,103 +53,121 @@ def check_pandoc() -> str | None:
     return path
 
 
-def check_plantuml() -> str | None:
-    """尋找 plantuml.jar，回傳路徑或 None"""
-    candidates = [
-        Path("tools/plantuml.jar"),
-        Path("plantuml.jar"),
-        Path.home() / "tools/plantuml.jar",
-    ]
-    for p in candidates:
-        if p.exists():
-            log.info(f"PlantUML jar: {p}")
-            return str(p)
+def check_mermaid() -> str | None:
+    """尋找 mermaid-cli (mmdc) 可執行檔，回傳路徑或 None"""
+    # 1) PATH 上的 mmdc（npm install -g @mermaid-js/mermaid-cli）
+    path = shutil.which("mmdc")
+    if path:
+        log.info(f"mermaid-cli (mmdc): {path}")
+        return path
+    # 2) 專案本地 node_modules（npm install @mermaid-js/mermaid-cli）
+    local = Path("node_modules/.bin/mmdc")
+    if local.exists():
+        log.info(f"mermaid-cli (mmdc): {local}")
+        return str(local)
+    # 3) 免安裝的 npx 後備方案
+    if shutil.which("npx"):
+        log.info("mermaid-cli: 將以 npx 執行（首次會下載，需要網路）")
+        return "npx:@mermaid-js/mermaid-cli"
     return None
 
 
 # ──────────────────────────────────────────────
-# PlantUML 處理
+# Mermaid 處理
 # ──────────────────────────────────────────────
-PLANTUML_BLOCK_RE = re.compile(
-    r"```plantuml\n(.*?)```",
+MERMAID_BLOCK_RE = re.compile(
+    r"```mermaid\n(.*?)```",
     re.DOTALL
 )
 
-DIAGRAM_TITLE_RE = re.compile(r"title\s+(.+)")
+# Mermaid 常見圖種第一個關鍵字 → 中文圖名（用於圖說文字）
+DIAGRAM_KIND_RE = re.compile(
+    r"^\s*(C4Context|C4Container|C4Component|sequenceDiagram|erDiagram|"
+    r"classDiagram|stateDiagram(?:-v2)?|flowchart|graph|gantt|journey)",
+    re.MULTILINE,
+)
+# Mermaid 標題：C4 的 `title ...` 或 sequence 的 `title ...`
+TITLE_RE = re.compile(r"^\s*title\s+(.+)$", re.MULTILINE)
 
 
-def extract_diagram_title(puml_content: str) -> str:
-    """從 PlantUML 內容中提取 title"""
-    match = DIAGRAM_TITLE_RE.search(puml_content)
-    return match.group(1).strip() if match else "架構圖"
+def extract_diagram_title(mmd_content: str, idx: int) -> str:
+    """從 Mermaid 內容擷取標題；若無 title 則以圖種 + 序號命名"""
+    m = TITLE_RE.search(mmd_content)
+    if m:
+        return m.group(1).strip()
+    k = DIAGRAM_KIND_RE.search(mmd_content)
+    kind = k.group(1) if k else "Diagram"
+    return f"{kind}-{idx:02d}"
 
 
-def render_plantuml(puml_content: str, output_path: Path, plantuml_jar: str) -> bool:
-    """將 PlantUML 內容渲染為 PNG"""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".puml", encoding="utf-8", delete=False
-    ) as f:
-        f.write(puml_content)
-        tmp_path = f.name
-
+def render_mermaid(mmd_content: str, output_path: Path, mmdc: str) -> bool:
+    """將 Mermaid 內容渲染為 PNG（mermaid-cli / mmdc，本地端執行）"""
+    tmp_path = None
     try:
-        result = subprocess.run(
-            ["java", "-jar", plantuml_jar, "-png", "-charset", "UTF-8",
-             "-o", str(output_path.parent), tmp_path],
-            capture_output=True, text=True
-        )
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".mmd", encoding="utf-8", delete=False
+        ) as f:
+            f.write(mmd_content)
+            tmp_path = f.name
+
+        if mmdc.startswith("npx:"):
+            pkg = mmdc.split(":", 1)[1]
+            base = ["npx", "-y", pkg]
+        else:
+            base = [mmdc]
+
+        cmd = base + [
+            "-i", tmp_path,
+            "-o", str(output_path),
+            "-b", "white",          # 白底，避免 Word 透明背景問題
+            "-s", "2",              # 2x 縮放，提升 Word 內解析度
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            log.warning(f"PlantUML 渲染失敗：{result.stderr}")
+            log.warning(f"Mermaid 渲染失敗：{result.stderr.strip()}")
             return False
-
-        # plantuml 輸出的 PNG 與 tmp 同名，移動至目標路徑
-        generated = Path(tmp_path).with_suffix(".png")
-        if generated.exists():
-            shutil.move(str(generated), str(output_path))
-            return True
-        return False
+        return output_path.exists()
     finally:
-        Path(tmp_path).unlink(missing_ok=True)
+        if tmp_path:
+            Path(tmp_path).unlink(missing_ok=True)
 
 
-def process_plantuml_blocks(
+def process_mermaid_blocks(
     markdown: str,
     assets_dir: Path,
-    plantuml_jar: str | None
+    mmdc: str | None
 ) -> str:
     """
-    將 Markdown 中的 plantuml 區塊替換為 PNG 圖片引用。
-    若 PlantUML 不可用，保留原始程式碼區塊並加上警告注釋。
+    將 Markdown 中的 mermaid 區塊渲染為 PNG 並替換為圖片引用。
+    若 mermaid-cli 不可用，保留原始程式碼區塊並加上警告注釋。
     """
     diagram_count = [0]
 
     def replace_block(match: re.Match) -> str:
-        puml_content = match.group(1)
+        mmd_content = match.group(1)
         diagram_count[0] += 1
         idx = diagram_count[0]
-        title = extract_diagram_title(puml_content)
+        title = extract_diagram_title(mmd_content, idx)
 
-        if plantuml_jar:
+        if mmdc:
             png_name = f"diagram-{idx:02d}.png"
             png_path = assets_dir / png_name
             assets_dir.mkdir(parents=True, exist_ok=True)
 
-            success = render_plantuml(puml_content, png_path, plantuml_jar)
-            if success:
+            if render_mermaid(mmd_content, png_path, mmdc):
                 rel_path = f"assets/{png_name}"
-                log.info(f"[PlantUML] 圖 {idx} 渲染完成：{png_name}")
+                log.info(f"[Mermaid] 圖 {idx} 渲染完成：{png_name}")
                 return f"![{title}]({rel_path})\n\n> 圖：{title}"
-            else:
-                log.warning(f"[PlantUML] 圖 {idx} 渲染失敗，保留原始碼")
+            log.warning(f"[Mermaid] 圖 {idx} 渲染失敗，保留原始碼")
 
-        # 無法渲染時，加上提示注釋
+        # 無法渲染時，保留來源並提示手動處理
         return (
-            f"<!-- ⚠️ PlantUML 圖表（需手動插入 PNG）：{title} -->\n\n"
-            f"```plantuml\n{puml_content}```\n\n"
-            f"> ⚠️ 請使用 PlantUML 將上方程式碼渲染為圖片後手動插入"
+            f"<!-- ⚠️ Mermaid 圖表（需手動插入 PNG）：{title} -->\n\n"
+            f"```mermaid\n{mmd_content}```\n\n"
+            f"> ⚠️ 請使用 mermaid-cli（mmdc）將上方程式碼渲染為圖片後手動插入"
         )
 
-    return PLANTUML_BLOCK_RE.sub(replace_block, markdown)
+    return MERMAID_BLOCK_RE.sub(replace_block, markdown)
 
 
 # ──────────────────────────────────────────────
@@ -194,7 +215,7 @@ def convert_to_docx(
 # ──────────────────────────────────────────────
 def main():
     parser = argparse.ArgumentParser(
-        description="SDLC Markdown → Word 套版轉換腳本"
+        description="SDLC Markdown → Word 套版轉換腳本（Mermaid 圖形）"
     )
     parser.add_argument(
         "--input", "-i", required=True,
@@ -214,8 +235,8 @@ def main():
         help="文件標題（選用，顯示於 Word 文件屬性）"
     )
     parser.add_argument(
-        "--no-plantuml", action="store_true",
-        help="跳過 PlantUML 渲染（保留程式碼區塊）"
+        "--no-mermaid", action="store_true",
+        help="跳過 Mermaid 渲染（保留程式碼區塊）"
     )
 
     args = parser.parse_args()
@@ -247,17 +268,17 @@ def main():
     # ── 讀取 Markdown ──
     markdown = md_path.read_text(encoding="utf-8")
 
-    # ── PlantUML 處理 ──
-    plantuml_jar = None if args.no_plantuml else check_plantuml()
+    # ── Mermaid 處理 ──
+    mmdc = None if args.no_mermaid else check_mermaid()
     assets_dir = md_path.parent / "assets"
 
-    if not args.no_plantuml:
-        if not plantuml_jar:
+    if not args.no_mermaid:
+        if not mmdc:
             log.warning(
-                "找不到 plantuml.jar，PlantUML 圖表將保留為程式碼區塊。\n"
-                "下載：https://plantuml.com/download 並置於 tools/plantuml.jar"
+                "找不到 mermaid-cli（mmdc），Mermaid 圖表將保留為程式碼區塊。\n"
+                "安裝：npm install -g @mermaid-js/mermaid-cli"
             )
-        markdown = process_plantuml_blocks(markdown, assets_dir, plantuml_jar)
+        markdown = process_mermaid_blocks(markdown, assets_dir, mmdc)
 
     # ── 寫入暫存 Markdown（含已替換的圖片路徑）──
     with tempfile.NamedTemporaryFile(
@@ -286,7 +307,7 @@ def main():
     print("\n✅ Word 文件已產出。轉換後請確認：")
     print("   1. 在 Word 中更新目錄（右鍵 → 更新欄位 → 更新整個目錄）")
     print("   2. 確認頁首頁尾資訊正確（文件編號、機密等級）")
-    print("   3. 確認 PlantUML 圖表已正確插入（或手動補充）")
+    print("   3. 確認 Mermaid 圖表已正確插入（或手動補充）")
 
 
 if __name__ == "__main__":

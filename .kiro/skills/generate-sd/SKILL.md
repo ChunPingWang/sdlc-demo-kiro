@@ -115,7 +115,7 @@ metadata:
 
 存至：`sdlc/sd/output/SD-{PROJECT_CODE}-v{VERSION}.md`  
 **圖形格式**：C4 L3 元件圖與技術循序圖一律使用 **Mermaid** 程式碼區塊（` ```mermaid `），  
-可直接在 GitHub / GitLab 預覽，無需安裝 PlantUML 或其他工具。
+可直接在 GitHub / GitLab 預覽，無需安裝額外繪圖工具。
 
 ---
 

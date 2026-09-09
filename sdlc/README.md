@@ -26,7 +26,7 @@ sdlc/
     │   └── SD-word-style-guide.md   # Word 套版樣式指南
     └── output/
         ├── SD-{CODE}-v{N}.md        # 產出的 SD 文件
-        └── assets/                  # 架構圖來源檔（PlantUML / draw.io）
+        └── assets/                  # 架構圖 PNG（由 Mermaid 渲染）與外部繪圖來源檔
 ```
 
 ---

@@ -106,7 +106,7 @@
 | 項目 | 規格 |
 |------|------|
 | 匯出格式 | PNG（解析度 150 dpi 以上）或 SVG |
-| 建議工具 | draw.io / Miro / PlantUML / C4 Model |
+| 建議工具 | Mermaid（優先）/ draw.io / Miro |
 | 檔案命名 | `SD-{PROJECT_CODE}-arch-{序號}.png` |
 | 存放位置 | `sdlc/sd/output/assets/` |
 

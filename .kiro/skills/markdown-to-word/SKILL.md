@@ -88,20 +88,23 @@ pandoc "{input}.md" \
 - [ ] **目錄**：更新目錄（右鍵 → 更新欄位 → 更新整個目錄）
 - [ ] **頁首頁尾**：文件編號、專案名稱、機密等級正確填寫
 - [ ] **表格**：無表格斷頁、欄寬適中
-- [ ] **PlantUML 圖表**：確認圖片以附件方式插入（PNG 格式，見下方說明）
+- [ ] **Mermaid 圖表**：確認圖片以 PNG 附件方式插入（見下方說明）
 - [ ] **Gherkin 程式碼區塊**：套用 `程式碼區塊` 樣式
 
-### Step 4：PlantUML 圖表處理
+### Step 4：Mermaid 圖表處理
 
-Pandoc 無法直接渲染 PlantUML，需先將 `.puml` 轉為 PNG 再嵌入：
+本工具鏈的圖形一律為 **Mermaid**（不使用 PlantUML）。Pandoc 無法直接渲染 Mermaid，  
+需先以 **mermaid-cli（`mmdc`）** 將 ` ```mermaid ` 區塊轉為 PNG 再嵌入：
 
 ```bash
-# 安裝 PlantUML（需要 Java）
-# 批次轉換所有 .puml 至 PNG
-java -jar plantuml.jar -png sdlc/*/output/assets/*.puml
+# 安裝 mermaid-cli（需要 Node.js 18+）
+npm install -g @mermaid-js/mermaid-cli
+
+# 單張渲染範例（白底、2x 解析度）
+mmdc -i diagram.mmd -o assets/diagram-01.png -b white -s 2
 ```
 
-轉換後 PNG 存於 `sdlc/*/output/assets/`，Markdown 中的 plantuml 區塊須先替換為：
+轉換後 PNG 存於 `sdlc/*/output/assets/`，Markdown 中的 mermaid 區塊會被替換為：
 
 ```markdown
 ![{圖表說明}](assets/{filename}.png)
@@ -109,7 +112,8 @@ java -jar plantuml.jar -png sdlc/*/output/assets/*.puml
 > 圖 N-M：{說明文字}
 ```
 
-腳本 `scripts/md_to_word.py` 會自動處理此替換。
+腳本 `scripts/md_to_word.py` 會自動擷取 mermaid 區塊、呼叫 `mmdc` 渲染並完成替換；  
+若環境無 `mmdc`，會退用 `npx -y @mermaid-js/mermaid-cli`（首次需網路），或保留程式碼區塊並提示手動處理。
 
 ### Step 5：輸出命名與版本
 
@@ -126,7 +130,7 @@ SD-{PROJECT_CODE}-v{MAJOR}.{MINOR}.docx
 
 ## 參考資源
 
-- `references/pandoc-guide.md` — Pandoc 安裝、套版建立、進階設定
-- `scripts/md_to_word.py` — 轉換腳本（含 PlantUML 自動替換）
+- `references/pandoc-guide.md` — Pandoc 與 mermaid-cli 安裝、套版建立、進階設定
+- `scripts/md_to_word.py` — 轉換腳本（含 Mermaid 自動渲染與替換）
 - `sdlc/fsd/templates/FSD-word-style-guide.md` — FSD Word 樣式定義
 - `sdlc/sd/templates/SD-word-style-guide.md` — SD Word 樣式定義
